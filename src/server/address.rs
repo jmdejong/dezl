@@ -45,7 +45,7 @@ impl FromStr for Address {
 			"unix" => Ok(Address::Unix(PathBuf::new().join(text))),
 			"abstract" => {
 					if cfg!(target_os = "linux") {
-						Ok(Address::Unix(PathBuf::new().join(&format!("\0{}", text))))
+						Ok(Address::Unix(PathBuf::new().join(format!("\0{}", text))))
 					} else {
 						Err(err!("abstract adresses are only for linux"))
 					}

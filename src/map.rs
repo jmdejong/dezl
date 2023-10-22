@@ -3,13 +3,13 @@ use std::collections::{HashMap, HashSet};
 use crate::{
 	pos::{Pos, Area, Direction},
 	tile::{Tile, Structure, Ground},
-	basemap::{BaseMap, InfiniteMap},
+	basemap::{BaseMap, BaseMapImpl},
 	timestamp::{Timestamp, Duration},
 	randomtick
 };
 
 pub struct Map {
-	basemap: InfiniteMap,
+	basemap: BaseMapImpl,
 	changes: HashMap<Pos, (Tile, Timestamp)>,
 	time: Timestamp,
 	modifications: HashSet<Pos>
@@ -17,9 +17,9 @@ pub struct Map {
 
 impl Map {
 	
-	pub fn new(seed: u32, time: Timestamp) -> Self {
+	pub fn new(basemap: BaseMapImpl, time: Timestamp) -> Self {
 		Self {
-			basemap: InfiniteMap::new(seed),
+			basemap,
 			changes: HashMap::new(),
 			time,
 			modifications: HashSet::new()
@@ -89,7 +89,7 @@ impl Map {
 	
 	fn tick_one(&mut self, pos: Pos, base_cell: Tile) {
 		self.modifications.insert(pos);
-		let tick_interval = randomtick::CHUNK_AREA as i64;
+		let tick_interval = randomtick::CHUNK_AREA;
 		if let Some((mut built, mut built_time)) = self.changes.get(&pos) {
 			while let Some((nticks, stage, surround)) = built.grow() {
 				let update_time = built_time + Duration(nticks * tick_interval);
@@ -136,9 +136,9 @@ impl Map {
 		self.changes.clone().into_iter().collect()
 	}
 	
-	pub fn load(changes: MapSave, time: Timestamp, seed: u32) -> Self {
+	pub fn load(changes: MapSave, time: Timestamp, basemap: BaseMapImpl) -> Self {
 		Self {
-			basemap: InfiniteMap::new(seed),
+			basemap,
 			changes: changes.into_iter().collect(),
 			time,
 			modifications: HashSet::new()

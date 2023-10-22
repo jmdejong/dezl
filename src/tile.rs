@@ -352,6 +352,10 @@ pub struct Tile {
 }
 
 impl Tile {
+	pub fn empty() -> Tile{
+		Self{ground: Ground::Empty, structure: Structure::Air}
+	}
+
 	pub fn ground(ground: Ground) -> Tile{
 		Self{ground, structure: Structure::Air}
 	}

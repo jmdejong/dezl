@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{
 	PlayerId,
+	config::MapDef,
 	controls::{Control},
 	pos::{Pos, Area},
 	util::Holder,
@@ -12,7 +13,8 @@ use crate::{
 	timestamp::{Timestamp},
 	creature::{Creature, Mind, CreatureId, PlayerSave},
 	player::Player,
-	map::{Map, MapSave}
+	map::{Map, MapSave},
+	basemap::BaseMapImpl,
 };
 
 const EDGE_OFFSET: i32 = 32;
@@ -26,22 +28,22 @@ pub struct World {
 	creatures: Holder<CreatureId, Creature>,
 	drawing: Option<HashMap<Pos, Vec<Sprite>>>,
 	claims: HashMap<PlayerId, Pos>,
-	seed: u32
+	mapdef: MapDef
 }
 
 impl World {
 	
-	pub fn new(name: String, seed: u32) -> Self {
+	pub fn new(name: String, basemap: BaseMapImpl, mapdef: MapDef) -> Self {
 		let time = Timestamp(0);
 		Self {
 			name,
-			ground: Map::new(seed, time),
+			ground: Map::new(basemap, time),
 			players: HashMap::new(),
 			creatures: Holder::new(),
 			time,
 			drawing: None,
 			claims: HashMap::new(),
-			seed
+			mapdef
 		}
 	}
 	
@@ -326,20 +328,20 @@ impl World {
 			time: self.time,
 			ground: self.ground.save(),
 			claims: self.claims.clone(),
-			seed: self.seed,
+			mapdef: self.mapdef.clone(),
 		}
 	}
 	
-	pub fn load(save: WorldSave) -> World {
+	pub fn load(save: WorldSave, basemap: BaseMapImpl) -> World {
 		World {
 			name: save.name,
-			ground: Map::load(save.ground, save.time, save.seed),
+			ground: Map::load(save.ground, save.time, basemap),
 			players: HashMap::new(),
 			creatures: Holder::new(),
 			time: save.time,
 			drawing: None,
 			claims: save.claims,
-			seed: save.seed,
+			mapdef: save.mapdef,
 		}
 	}
 }
@@ -388,6 +390,6 @@ pub struct WorldSave {
 	time: Timestamp,
 	ground: MapSave,
 	claims: HashMap<PlayerId, Pos>,
-	seed: u32
+	pub mapdef: MapDef,
 }
 

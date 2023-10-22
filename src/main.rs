@@ -14,6 +14,7 @@ mod errors;
 mod heightmap;
 mod gameserver;
 mod grid;
+mod infinitemap;
 mod inventory;
 mod item;
 mod map;
@@ -25,6 +26,7 @@ mod randomtick;
 mod server;
 mod sprite;
 mod tile;
+mod tiledmap;
 mod timestamp;
 mod util;
 mod world;
@@ -42,7 +44,8 @@ use self::{
 	world::World,
 	worldmessages::MessageCache,
 	persistence::{PersistentStorage, FileStorage, LoaderError},
-	config::{Config, WorldAction, WorldConfig},
+	config::{Config, WorldAction, WorldConfig, MapDef},
+	basemap::BaseMapImpl,
 };
 
 
@@ -52,17 +55,21 @@ fn main(){
 	let config = Config::parse();
 	
 	match config.world_action {
-		WorldAction::New{conf, seed} => {
+		WorldAction::New{conf, mapdef} => {
 			let persistence = FileStorage::initialize(&conf.name).unwrap();
 			if let Err(LoaderError::MissingResource(_)) = persistence.load_world() {
-				start_world(World::new(conf.name.clone(), seed), persistence, conf);
+				let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
+				start_world(World::new(conf.name.clone(), basemap, mapdef), persistence, conf);
 			} else {
 				panic!("World '{}' already exists", &conf.name);
 			}
 		}
 		WorldAction::Load(conf) => {
 			let persistence = FileStorage::initialize(&conf.name).unwrap();
-			start_world(World::load(persistence.load_world().expect("Can't load world")), persistence, conf);
+			let saved = persistence.load_world().expect("Can't load world");
+			let mapdef = &saved.mapdef;
+			let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
+			start_world(World::load(saved, basemap), persistence, conf);
 		}
 		WorldAction::Bench{iterations} => {
 			bench_view(iterations);
@@ -201,7 +208,9 @@ fn save(world: &World, persistence: &impl PersistentStorage) {
 
 
 fn bench_view(iterations: usize) {
-	let mut world = World::new("bench".to_string(), 9876);
+	let mapdef = MapDef::Infinite{seed: 9876};
+	let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
+	let mut world = World::new("bench".to_string(), basemap, mapdef);
 	let mut player_save = world.default_player();
 	let player_id = PlayerId("Player".to_string());
 	let now = Instant::now();

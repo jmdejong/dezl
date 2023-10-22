@@ -1,5 +1,7 @@
 
 use clap::{Parser, Subcommand, Args};
+use serde::{Serialize, Deserialize};
+use std::path::{PathBuf};
 
 use crate::{
 	server::Address,
@@ -23,8 +25,8 @@ pub enum WorldAction {
 		#[command(flatten)]
 		conf: WorldConfig,
 
-		#[arg(long)]
-		seed: u32,
+		#[command(subcommand)]
+		mapdef: MapDef
 	},
 	/// Benchmark world redraw
 	Bench{
@@ -32,7 +34,17 @@ pub enum WorldAction {
 		#[arg(long, default_value_t=1000)]
 		iterations: usize,
 	}
+}
 
+#[derive(Debug, Subcommand, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum MapDef {
+	Infinite {
+		seed: u32
+	},
+	Tiled {
+		path: PathBuf
+	},
 }
 
 #[derive(Debug, Args)]
