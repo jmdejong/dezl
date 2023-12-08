@@ -7,19 +7,31 @@ use crate::{
 	pos::Area,
 	Sprite,
 	PlayerId,
+	timestamp::Timestamp
 };
 
 macro_rules! worldmessages {
 	($($name: ident, $typ: ident, $strname: expr, $filter: expr);*;) => {
 	
-		#[derive(Debug, Clone, Default, PartialEq, Eq)]
+		#[derive(Debug, Clone, PartialEq, Eq)]
 		pub struct WorldMessage {
+			pub tick: Timestamp,
 			$(
 				pub $name: Option<$typ>,
 			)*
+
 		}
 
 		impl WorldMessage {
+
+			pub fn new(tick: Timestamp) -> Self {
+				Self {
+					tick,
+					$(
+						$name: None,
+					)*
+				}
+			}
 			
 			pub fn remove_old(&mut self, previous: &WorldMessage){
 				$(
@@ -48,7 +60,7 @@ macro_rules! worldmessages {
 						updates.push(json!([$strname, update]));
 					}
 				)*
-				json!(["world", updates])
+				json!(["world", updates, self.tick])
 			}
 		}
 	}

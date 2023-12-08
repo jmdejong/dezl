@@ -126,16 +126,16 @@ impl GameServer {
 			.send(clientid.1, json!(["error", errname, err_text]).to_string().as_str())
 	}
 	
-	pub fn broadcast_message(&mut self, text: &str){
+	fn broadcast_message(&mut self, text: &str){
 		println!("m {}      {}", text, OffsetDateTime::now_utc());
 		self.broadcast_json(json!(["message", text, ""]));
 	}
 	
-	pub fn broadcast_json(&mut self, value: Value){
+	fn broadcast_json(&mut self, value: Value){
 		self.broadcast(value.to_string().as_str());
 	}
 	
-	pub fn broadcast(&mut self, txt: &str){
+	fn broadcast(&mut self, txt: &str){
 		for ClientId(serverid, id) in self.players.keys() {
 			let _ = self.servers.get_mut(serverid)
 				.unwrap()

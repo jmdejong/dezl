@@ -259,7 +259,7 @@ impl World {
 		let changes = self.draw_changes(dynamic_sprites.clone());
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
 		for (playerid, player) in self.players.iter_mut() {
-			let mut wm = WorldMessage::default();
+			let mut wm = WorldMessage::new(self.time);
 			if let Some(body) = self.creatures.get(&player.body) {
 				let in_view_range = player.view_area()
 					.map_or(
