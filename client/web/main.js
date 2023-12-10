@@ -28,7 +28,7 @@ function start(e) {
 	spritemap.addSprites(
 		document.getElementById("spritemap"),
 		{
-			player: {x: 0, y: 0},
+			player: {x: 0, y: 0, layer: "creatures"},
 			sage: {x: 1, y: 0},
 			worktable: {x: 6, y: 0},
 			altar: {x: 7, y: 0},
@@ -188,9 +188,8 @@ class Client {
 			this.display.drawSection(args.area.w, args.area.h, args.area.x, args.area.y, args.field, args.mapping);
 		} else if (type === "changecells") {
 			this.display.changeTiles(args);
-			// for (let cell of args){
-				// this.display.drawTile(cell[0][0], cell[0][1], cell[1]);
-			// }
+		} else if (type === "dynamics") {
+			this.display.drawDynamics(args);
 		} else if (type == "playerpos") {
 			this.display.setCenter(args[0], args[1]);
 			document.getElementById("coordinates").textContent = `${args[0]}, ${args[1]}`;

@@ -63,7 +63,7 @@ class Display {
 	constructor(canvas, spritemap, fuzzSprite) {
 		this.canvas = canvas;
 		this.outerCtx = canvas.getContext("2d");
-		this.layers = ["ground", "fuzz", "base", "borders", "main", "ho"];
+		this.layers = ["ground", "fuzz", "base", "borders", "main", "creatures", "ho"];
 		this.buffers = {};
 		this.ctxs = {};
 		this.spritemap = spritemap;
@@ -148,6 +148,27 @@ class Display {
 		}
 	}
 
+	drawDynamics(entities) {
+		this.ctxs.creatures.clearRect(0, 0, this.width * this.tileSize, this.height * this.tileSize);
+		for (let entity of entities) {
+			let x = (entity.p[0] - this.offsetX) * this.tileSize;
+			let y = (entity.p[1] - this.offsetY) * this.tileSize;
+			this._drawSprite(entity.s, x|0, y|0);
+		}
+	}
+
+	_drawSprite(spritename, x, y) {
+		let sprite = this.spritemap.sprite(spritename);
+		if (sprite) {
+			for (let layer in sprite.layers) {
+				sprite.layers[layer].drawOn(this.ctxs[layer], x, y);
+			}
+		} else {
+			this.ctxs.base.fillStyle = this._getColor(name);
+			this.ctxs.base.fillRect(x, y, this.tileSize, this.tileSize);
+		}
+	}
+
 	_drawTile(tileX, tileY, sprites) {
 		let x = (tileX - this.offsetX) * this.tileSize;
 		let y = (tileY - this.offsetY) * this.tileSize;
@@ -162,15 +183,7 @@ class Display {
 		this.ctxs.ho.clearRect(x, hoY, this.tileSize, this.tileSize);
 		for (let i=sprites.length; i --> 0;) {
 			let name = sprites[i];
-			let sprite = this.spritemap.sprite(name);
-			if (sprite) {
-				for (let layer in sprite.layers) {
-					sprite.layers[layer].drawOn(this.ctxs[layer], x, y);
-				}
-			} else {
-				this.ctxs.base.fillStyle = this._getColor(name);
-				this.ctxs.base.fillRect(x, y, this.tileSize, this.tileSize);
-			}
+			this._drawSprite(name, x, y);
 		}
 	}
 

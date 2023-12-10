@@ -62,6 +62,7 @@ impl <K: HolderId, V> Holder<K, V> {
 		self.storage.iter_mut()
 	}
 	
+	#[allow(dead_code)]
 	#[inline]
 	pub fn values(&self) -> Values<K, V> {
 		self.storage.values()

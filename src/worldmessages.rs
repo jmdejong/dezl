@@ -7,7 +7,8 @@ use crate::{
 	pos::Area,
 	Sprite,
 	PlayerId,
-	timestamp::Timestamp
+	timestamp::Timestamp,
+	creature::CreatureView
 };
 
 macro_rules! worldmessages {
@@ -73,12 +74,14 @@ worldmessages!(
 	sounds, SoundMessage, "messages", false;
 	viewarea, ViewAreaMessage, "viewarea", true;
 	section, SectionMessage, "section", true;
+	dynamics, DynamicMessage, "dynamics", true;
 );
 
 
 pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, usize);
 pub type SoundMessage = Vec<(SoundType, String)>;
+pub type DynamicMessage = Vec<CreatureView>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct ViewAreaMessage {

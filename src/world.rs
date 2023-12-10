@@ -11,7 +11,7 @@ use crate::{
 	sprite::Sprite,
 	worldmessages::{WorldMessage, SectionMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}},
 	timestamp::{Timestamp},
-	creature::{Creature, Mind, CreatureId, PlayerSave},
+	creature::{Creature, Mind, CreatureId, PlayerSave, CreatureView},
 	player::Player,
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
@@ -26,7 +26,6 @@ pub struct World {
 	ground: Map,
 	players: HashMap<PlayerId, Player>,
 	creatures: Holder<CreatureId, Creature>,
-	drawing: Option<HashMap<Pos, Vec<Sprite>>>,
 	claims: HashMap<PlayerId, Pos>,
 	mapdef: MapDef
 }
@@ -41,7 +40,6 @@ impl World {
 			players: HashMap::new(),
 			creatures: Holder::new(),
 			time,
-			drawing: None,
 			claims: HashMap::new(),
 			mapdef
 		}
@@ -227,37 +225,21 @@ impl World {
 	}
 	
 	
-	fn draw_dynamic(&mut self) -> HashMap<Pos, Vec<Sprite>> {
-		let mut sprites: HashMap<Pos, Vec<Sprite>> = HashMap::new();
-		for creature in self.creatures.values() {
-			sprites.entry(creature.pos).or_insert_with(Vec::new).push(creature.sprite);
-		}
-		sprites.into_iter().map(|(pos, mut sprs)| {
-			sprs.append(&mut self.ground.cell(pos).sprites());
-			(pos, sprs)
-		}).collect()
-	}
-	
-	fn draw_changes(&mut self, mut sprites: HashMap<Pos, Vec<Sprite>>) -> Option<ChangeMessage> {
-		if let Some(last_drawing) = &self.drawing {
-			for pos in last_drawing.keys() {
-				sprites.entry(*pos).or_insert_with(||self.ground.cell(*pos).sprites());
-			}
-			for (pos, tile) in self.ground.modified().into_iter() {
-				sprites.entry(pos).or_insert_with(||tile.sprites());
-			}
-			let sprs: ChangeMessage = sprites.iter()
-				.filter(|(pos, spritelist)| last_drawing.get(pos) != Some(spritelist))
-				.map(|(pos, spritelist)| (*pos, spritelist.clone()))
-				.collect();
-			Some(sprs)
-		} else {None}
+	fn draw_changes(&mut self) -> Option<ChangeMessage> {
+		Some(
+			self.ground.modified().into_iter()
+				.map(|(pos, tile)| (pos, tile.sprites()))
+				.collect()
+		)
 	}
 	
 	pub fn view(&mut self) -> HashMap<PlayerId, WorldMessage> {
-		let dynamic_sprites = self.draw_dynamic();
-		let changes = self.draw_changes(dynamic_sprites.clone());
+		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
+		let dynamics: Vec<CreatureView> = self.players.values()
+			.filter_map(|player| self.creatures.get(&player.body))
+			.map(|creature| creature.view())
+			.collect();
 		for (playerid, player) in self.players.iter_mut() {
 			let mut wm = WorldMessage::new(self.time);
 			if let Some(body) = self.creatures.get(&player.body) {
@@ -274,11 +256,12 @@ impl World {
 					let (total_area, redraw_area) = Self::new_view_area(body.pos, &player.view_area);
 					player.view_area = Some(total_area);
 					wm.viewarea = Some(ViewAreaMessage{area: total_area});
-					wm.section = Some(draw_field(redraw_area, &mut self.ground, &dynamic_sprites));
+					wm.section = Some(draw_field(redraw_area, &mut self.ground));
 				}
 				if changes.is_some() {
 					wm.change = changes.clone();
 				}
+				wm.dynamics = Some(dynamics.clone());
 				wm.pos = Some(body.pos);
 				wm.inventory = Some(body.inventory.view());
 				if !body.heard_sounds.is_empty() {
@@ -287,7 +270,6 @@ impl World {
 			}
 			views.insert(playerid.clone(), wm);
 		}
-		self.drawing = Some(dynamic_sprites);
 		self.ground.flush();
 		views
 	}
@@ -339,7 +321,6 @@ impl World {
 			players: HashMap::new(),
 			creatures: Holder::new(),
 			time: save.time,
-			drawing: None,
 			claims: save.claims,
 			mapdef: save.mapdef,
 		}
@@ -347,15 +328,12 @@ impl World {
 }
 
 
-fn draw_field(area: Area, tiles: &mut Map, sprites: &HashMap<Pos, Vec<Sprite>>) -> SectionMessage {
+fn draw_field(area: Area, tiles: &mut Map) -> SectionMessage {
 	// println!("redrawing field");
 	let mut values :Vec<usize> = Vec::with_capacity((area.size().x * area.size().y) as usize);
 	let mut mapping: Vec<Vec<Sprite>> = Vec::new();
-	for (pos, tile) in tiles.load_area(area) {
+	for tile in tiles.load_area(area) {
 		let mut tile_sprites = Vec::new();
-		if let Some(dynamic_sprites) = sprites.get(&pos) {
-			tile_sprites.extend_from_slice(dynamic_sprites);
-		}
 		tile_sprites.append(&mut tile.sprites());
 		values.push(
 			match mapping.iter().position(|x| x == &tile_sprites) {

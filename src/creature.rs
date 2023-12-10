@@ -60,6 +60,13 @@ impl Creature {
 			inventory: self.inventory.save()
 		}
 	}
+
+	pub fn view(&self) -> CreatureView {
+		CreatureView {
+			pos: self.pos,
+			sprite: self.sprite
+		}
+	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -86,3 +93,12 @@ impl PlayerSave {
 		}
 	}
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CreatureView {
+	#[serde(rename = "s")]
+	pub sprite: Sprite,
+	#[serde(rename = "p")]
+	pub pos: Pos
+}
+

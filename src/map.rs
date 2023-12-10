@@ -34,13 +34,12 @@ impl Map {
 		self.changes.get(&pos).map(|change| change.0).unwrap_or_else(|| self.base_cell(pos))
 	}
 
-	pub fn load_area(&mut self, area: Area) -> impl Iterator<Item = (Pos, Tile)> + '_ {
+	pub fn load_area(&mut self, area: Area) -> impl Iterator<Item = Tile> + '_ {
 		// let base_grid = self.basemap.region(area, self.time);
 		self.basemap.region(area, self.time).into_iter().map(|(pos, base_cell)| {
 			// let base_cell = self.base_cell(pos);
 			self.tick_one(pos, base_cell);
-			let cell = self.changes.get(&pos).map(|change| change.0).unwrap_or(base_cell);
-			(pos, cell)
+			self.changes.get(&pos).map(|change| change.0).unwrap_or(base_cell)
 		})
 	}
 
