@@ -127,6 +127,9 @@ class Client:
 		
 		if msgType == 'changecells' and len(msg[1]):
 			self.display.drawFieldCells(msg[1])
+
+		if msgType == "dynamics":
+			self.display.drawDynamics(msg[1])
 		
 		if msgType == "playerpos":
 			self.display.setFieldCenter(msg[1])

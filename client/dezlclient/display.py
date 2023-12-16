@@ -27,34 +27,48 @@ class Display:
 		# temporary, until these have a better place
 		self.inventory = ListSelector(self.getWidget("inventory"))
 		self.inventory._debug_name = "inventory"
+		self.fieldBuffer = {}
+		self.previousDynamics = set()
 	
 	def getWidget(self, name):
 		return self.layout.get(name)
-	
-	def drawField(self, fieldWidth, fieldHeight, fieldCells, mapping, offset):
-		field = self.getWidget("field")
-		field.set_dimensions(offset, fieldWidth, fieldHeight, keep=True)
-		
-		brushes = [self.brush(spriteNames) for spriteNames in mapping]
-		
-		field.draw_all(fieldCells, brushes)
-
 
 	def setViewArea(self, x, y, w, h):
 		field = self.getWidget("field")
 		field.set_dimensions((x, y), w, h, keep=True)
-
+		self.fieldBuffer = {pos: sprites for pos, sprites in self.fieldBuffer.items() if not (pos[0] < x-1 or pos[1] < y-1 or pos[0] > x+w or pos[1] > y+h)}
 
 	def drawSection(self, area, fieldCells, mapping):
 		field = self.getWidget("field")
 		brushes = [self.brush(spriteNames) for spriteNames in mapping]
 		field.draw_all(fieldCells, brushes, area)
+		((xmin, ymin), (w, h)) = area
+		for (i, c) in enumerate(fieldCells):
+			x = i % w + xmin
+			y = i // w + ymin
+			self.fieldBuffer[(x, y)] = mapping[c]
 	
 	def drawFieldCells(self, cells):
 		field = self.getWidget("field")
 		for cell in cells:
 			(x, y), spriteNames = cell
-			field.change_cell(x, y, *self.brush(spriteNames))
+			brush = self.brush(spriteNames)
+			field.change_cell(x, y, *brush)
+			self.fieldBuffer[(x, y)] = spriteNames
+
+	def drawDynamics(self, dynamics):
+		field = self.getWidget("field")
+		knownDynamics = set()
+		for d in dynamics:
+			x, y = d["p"]
+			pos = (x, y)
+			sprite = d["s"]
+			field.change_cell(x, y, *self.brush([sprite, *self.fieldBuffer.get((x, y), [])]))
+			self.previousDynamics.discard(pos)
+			knownDynamics.add(pos)
+		for (x, y) in self.previousDynamics:
+			field.change_cell(x, y, *self.brush(self.fieldBuffer.get((x, y), [])))
+		self.previousDynamics = knownDynamics
 	
 	def brush(self, spriteNames):
 		if not len(spriteNames):
