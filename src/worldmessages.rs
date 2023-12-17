@@ -8,7 +8,7 @@ use crate::{
 	Sprite,
 	PlayerId,
 	timestamp::Timestamp,
-	creature::CreatureView
+	creature::{CreatureView, Movement},
 };
 
 macro_rules! worldmessages {
@@ -68,7 +68,7 @@ macro_rules! worldmessages {
 }
 
 worldmessages!(
-	pos, Pos, "playerpos", true;
+	pos, PositionMessage, "playerpos", true;
 	change, ChangeMessage, "changecells", true;
 	inventory, InventoryMessage, "inventory", true;
 	sounds, SoundMessage, "messages", false;
@@ -82,6 +82,13 @@ pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, usize);
 pub type SoundMessage = Vec<(SoundType, String)>;
 pub type DynamicMessage = Vec<CreatureView>;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct PositionMessage {
+	pub pos: Pos,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub movement: Option<Movement>,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct ViewAreaMessage {

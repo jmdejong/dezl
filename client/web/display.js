@@ -151,9 +151,9 @@ class Display {
 	drawDynamics(entities) {
 		this.ctxs.creatures.clearRect(0, 0, this.width * this.tileSize, this.height * this.tileSize);
 		for (let entity of entities) {
-			let x = (entity.p[0] - this.offsetX) * this.tileSize;
-			let y = (entity.p[1] - this.offsetY) * this.tileSize;
-			this._drawSprite(entity.s, x|0, y|0);
+			let x = (entity.x - this.offsetX) * this.tileSize;
+			let y = (entity.y - this.offsetY) * this.tileSize;
+			this._drawSprite(entity.sprite, x|0, y|0);
 		}
 	}
 

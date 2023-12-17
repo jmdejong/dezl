@@ -9,6 +9,7 @@ use crate::{
 	util::HolderId,
 	inventory::{Inventory, InventorySave},
 	worldmessages::SoundType,
+	timestamp::Timestamp,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,12 +21,12 @@ pub enum Mind {
 pub struct Creature {
 	pub mind: Mind,
 	pub pos: Pos,
-	pub cooldown: Duration,
-	pub walk_cooldown: Duration,
+	walk_cooldown: Duration,
 	pub sprite: Sprite,
 	pub inventory: Inventory,
 	pub heard_sounds: Vec<(SoundType, String)>,
 	is_dead: bool,
+	movement: Option<Movement>,
 }
 
 impl Creature {
@@ -41,12 +42,12 @@ impl Creature {
 		Self {
 			mind: Mind::Player(playerid),
 			pos: saved.pos,
-			cooldown: Duration(0),
-			walk_cooldown: Duration(0),
+			walk_cooldown: Duration(2),
 			sprite: Sprite::PlayerDefault,
 			inventory: Inventory::load(saved.inventory),
 			heard_sounds: Vec::new(),
-			is_dead: false
+			is_dead: false,
+			movement: None,
 		}
 	}
 	
@@ -64,7 +65,33 @@ impl Creature {
 	pub fn view(&self) -> CreatureView {
 		CreatureView {
 			pos: self.pos,
-			sprite: self.sprite
+			sprite: self.sprite,
+			movement: self.movement.clone(),
+		}
+	}
+
+	pub fn move_to(&mut self, newpos: Pos, time: Timestamp) {
+		self.movement = Some(Movement {
+			from: self.pos,
+			start: time,
+			end: time + self.walk_cooldown
+		});
+		self.pos = newpos;
+	}
+
+	pub fn current_movement(&self, time: Timestamp) -> Option<Movement> {
+		if time < self.movement.as_ref()?.end {
+			self.movement.clone()
+		} else {
+			None
+		}
+	}
+
+	pub fn can_move(&self, time: Timestamp) -> bool {
+		if let Some(movement) = &self.movement {
+			time >= movement.end
+		} else {
+			true
 		}
 	}
 }
@@ -99,6 +126,19 @@ pub struct CreatureView {
 	#[serde(rename = "s")]
 	pub sprite: Sprite,
 	#[serde(rename = "p")]
-	pub pos: Pos
+	pub pos: Pos,
+	#[serde(skip_serializing_if = "Option::is_none", rename="m")]
+	pub movement: Option<Movement>,
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct Movement {
+	#[serde(rename = "f")]
+	pub from: Pos,
+	#[serde(rename = "s")]
+	pub start: Timestamp,
+	#[serde(rename = "e")]
+	pub end: Timestamp,
 }
 

@@ -3,7 +3,7 @@ use std::ops::{Add, Sub};
 use serde::{Serialize, Deserialize};
 use crate::random;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Timestamp(pub i64);
 
 impl Timestamp {

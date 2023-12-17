@@ -79,6 +79,8 @@ class Client {
 		this.display = display;
 		this.websocket = null;
 		this.delay = parseParameters().delay|0;
+		this.tick = 0;
+		this.fps = 10;
 	}
 	
 	start(){
@@ -158,6 +160,7 @@ class Client {
 		});
 		this.resize();
 		window.addEventListener('resize', e => this.resize());
+		this.update(0);
 	}
 	
 	handleMessage(msg) {
@@ -170,9 +173,11 @@ class Client {
 				this.print(data[1], data[0]);
 			}
 		} else if (type === "world") {
+			this.tick = data[2];
 			for (let message of data[1]) {
 				this.handleWorldMessage(message);
 			}
+			this.draw();
 			this.display.redraw();
 		} else {
 			console.log("unknown", data);
@@ -189,10 +194,10 @@ class Client {
 		} else if (type === "changecells") {
 			this.display.changeTiles(args);
 		} else if (type === "dynamics") {
-			this.display.drawDynamics(args);
+			this.entities = args
 		} else if (type == "playerpos") {
-			this.display.setCenter(args[0], args[1]);
-			document.getElementById("coordinates").textContent = `${args[0]}, ${args[1]}`;
+			this.position = args;
+			document.getElementById("coordinates").textContent = `${args.pos[0]}, ${args.pos[1]}`;
 		} else if (type === "inventory") {
 			this.setInventory(args[0], args[1]);
 		} else if (type === "messages") {
@@ -280,8 +285,38 @@ class Client {
 	resize() {
 		this.zooms = this.zooms || 0
 		this.zooms += 1
-		this.print("zoom " + this.zooms);
 		this.display.resize(window.innerWidth, window.innerHeight);
+	}
+
+	draw() {
+		if (this.position) {
+			let [cx, cy] = this.position.pos;
+			if (this.position.movement && this.tick < this.position.movement.e) {
+				let start = this.position.movement.s;
+				let progress = (this.tick - start) / (this.position.movement.e - start)
+				cx += (this.position.movement.f[0] - cx) * (1-progress)
+				cy += (this.position.movement.f[1] - cy) * (1-progress)
+			}
+			this.display.setCenter(cx, cy);
+		}
+		if (this.entities) {
+			this.display.drawDynamics(this.entities.map(entity => {
+				let [x, y] = entity.p;
+				if (entity.m && this.tick < entity.m.e) {
+					let start = entity.m.s;
+					let progress = (this.tick - start) / (entity.m.e - start)
+					x += (entity.m.f[0] - x) * (1 - progress);
+					y += (entity.m.f[1] - y) * (1 - progress);
+				}
+				return {x: x, y: y, sprite: entity.s};
+			}));
+		}
+	}
+
+	update(t, duration) {
+		this.tick += duration / 1000 * this.fps;
+		this.draw();
+		requestAnimationFrame(newTime => this.update(newTime, newTime - t));
 	}
 }
 

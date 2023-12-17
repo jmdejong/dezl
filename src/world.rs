@@ -9,7 +9,7 @@ use crate::{
 	pos::{Pos, Area},
 	util::Holder,
 	sprite::Sprite,
-	worldmessages::{WorldMessage, SectionMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}},
+	worldmessages::{WorldMessage, SectionMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
 	creature::{Creature, Mind, CreatureId, PlayerSave, CreatureView},
 	player::Player,
@@ -102,23 +102,18 @@ impl World {
 			.map(|(creatureid, creature)| (creature.pos, *creatureid))
 			.collect();
 		let plans: HashMap<CreatureId, Control> = self.creatures.iter()
-			.filter(|(_k, c)| c.cooldown.0 <= 0)
+			.filter(|(_k, c)| c.can_move(self.time))
 			.filter_map(|(k, c)|
 				Some((*k, self.creature_plan(c)?))
 			).collect();
 		for (id, creature) in self.creatures.iter_mut() {
 			creature.heard_sounds = Vec::new();
-			if creature.cooldown.0 > 0 {
-				creature.cooldown.0 -= 1;
-				continue;
-			}
 			let Some(plan) = plans.get(id) 
 				else {
 					continue 
 				};
 			match plan {
 				Control::Move(direction) => {
-					creature.cooldown = creature.walk_cooldown;
 					let newpos = creature.pos + *direction;
 					let tile = self.ground.cell(newpos);
 					if !tile.blocking() && !creature_map.contains_key(&newpos) {
@@ -126,7 +121,7 @@ impl World {
 							creature_map.remove(&creature.pos);
 						}
 						creature_map.insert(newpos, *id);
-						creature.pos = newpos;
+						creature.move_to(newpos, self.time);
 					}
 				}
 				Control::Suicide => {
@@ -262,7 +257,7 @@ impl World {
 					wm.change = changes.clone();
 				}
 				wm.dynamics = Some(dynamics.clone());
-				wm.pos = Some(body.pos);
+				wm.pos = Some(PositionMessage{pos: body.pos, movement: body.current_movement(self.time)});
 				wm.inventory = Some(body.inventory.view());
 				if !body.heard_sounds.is_empty() {
 					wm.sounds = Some(body.heard_sounds.clone());
