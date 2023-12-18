@@ -206,7 +206,6 @@ fn save(world: &World, persistence: &impl PersistentStorage) {
 	eprintln!("saved world {} on step {}", world.name, world.time.0);
 }
 
-
 fn bench_view(iterations: usize) {
 	let mapdef = MapDef::Infinite{seed: 9876};
 	let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));

@@ -1,18 +1,22 @@
 "use strict";
 
 class Sprite {
-	constructor(image, x, y, width, height, originX, originY) {
+	constructor(image, x, y, width, height, area) {
 		this.image = image;
 		this.x = x || 0;
 		this.y = y || 0;
 		this.width = width || image.width;
 		this.height = height || image.height;
-		this.originX = originX || 0;
-		this.originY = originY || 0;
+		this.area = area || {
+			x: 0,
+			y: 0,
+			w: 1,
+			h: 1,
+		};
 	}
 
 	drawOn(ctx, x, y) {
-		ctx.drawImage(this.image, this.x, this.y, this.width, this.height, x - this.originX, y - this.originY, this.width, this.height);
+		ctx.drawImage(this.image, this.x, this.y, this.width, this.height, x, y, this.width, this.height);
 	}
 }
 
@@ -56,6 +60,94 @@ function hashpos(x, y) {
 	return x + "," + y;
 }
 
+class DrawBuffer {
+
+	constructor(area, resolution) {
+		this.canvas = document.createElement("canvas");
+		this.canvas.width = area.w * resolution;
+		this.canvas.height = area.h * resolution;
+		this.resolution = resolution;
+		this.area = area;
+		this.ctx = this.canvas.getContext("2d");
+		this.ctx.imageSmoothingEnabled = false;
+	}
+
+
+	drawSprite(sprite, x, y) {
+		x = (x - this.area.x) * this.resolution;
+		y = (y - this.area.y) * this.resolution;
+		this.ctx.drawImage(
+			sprite.image,
+			sprite.x,
+			sprite.y,
+			sprite.width,
+			sprite.height,
+			x + sprite.area.x * this.resolution,
+			y + sprite.area.x * this.resolution,
+			this.resolution * sprite.area.w,
+			this.resolution * sprite.area.h
+		);
+	}
+
+	drawBehind(drawFn) {
+		this.ctx.globalCompositeOperation = "destination-out";
+		drawFn(this);
+		this.ctx.globalCompositeOperation = "source-over";
+	}
+
+	drawBuffer(buffer) {
+		// todo: what if resolution is different
+		this.ctx.drawImage(buffer.canvas, (buffer.area.x - this.area.x) * this.resolution, (buffer.area.y - this.area.y) * this.resolution);
+	}
+
+	clear() {
+		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+	}
+
+	fillTile(color, x, y) {
+		this.ctx.fillStyle = color;
+		this.ctx.fillRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, this.resolution, this.resolution);
+	}
+
+	clearTile(x, y) {
+		this.ctx.clearRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, this.resolution, this.resolution);
+	}
+
+	drawBorders(color, x, y, edges, width) {
+		let px = (x - this.area.x) * this.resolution;
+		let py = (y - this.area.y) * this.resolution;
+		this.ctx.strokeStyle = color;
+		this.ctx.lineWidth = width * this.resolution;
+		let off = width * this.resolution / 2;
+		if (edges.left) {
+			this.ctx.beginPath();
+			this.ctx.moveTo(px+off, py);
+			this.ctx.lineTo(px+off, py + this.resolution);
+			this.ctx.stroke();
+		}
+		if (edges.top) {
+			this.ctx.beginPath();
+			this.ctx.moveTo(px, py+off);
+			this.ctx.lineTo(px + this.resolution, py+off);
+			this.ctx.stroke();
+		}
+		if (edges.right) {
+			this.ctx.beginPath();
+			this.ctx.moveTo(px + this.resolution-off, py);
+			this.ctx.lineTo(px + this.resolution-off, py + this.resolution);
+			this.ctx.stroke();
+		}
+		if (edges.bottom) {
+			this.ctx.beginPath();
+			this.ctx.moveTo(px, py + this.resolution-off);
+			this.ctx.lineTo(px + this.resolution, py + this.resolution-off);
+			this.ctx.stroke();
+		}
+		this.ctx.stroke();
+		this.ctx.lineWidth = 1;
+	}
+}
+
 
 class Display {
 	tileSize = 8;
@@ -65,7 +157,6 @@ class Display {
 		this.outerCtx = canvas.getContext("2d");
 		this.layers = ["ground", "fuzz", "base", "borders", "main", "creatures", "ho"];
 		this.buffers = {};
-		this.ctxs = {};
 		this.spritemap = spritemap;
 		this.offsetX = 0;
 		this.offsetY = 0;
@@ -81,15 +172,15 @@ class Display {
 
 	setViewArea(area){
 		for (let layer of this.layers) {
-			let buffer = document.createElement("canvas");
-			buffer.width = area.w * this.tileSize;
-			buffer.height = area.h * this.tileSize;
-			let ctx = buffer.getContext("2d");
+			let resolution = this.tileSize;
+			if (layer === "creatures") {
+				resolution *= this.scale;
+			}
+			let buffer = new DrawBuffer(area, resolution);
 			if (this.buffers[layer]) {
-				ctx.drawImage(this.buffers[layer], (this.offsetX - area.x) * this.tileSize, (this.offsetY - area.y) * this.tileSize);
+				buffer.drawBuffer(this.buffers[layer]);
 			}
 			this.buffers[layer] = buffer;
-			this.ctxs[layer] = ctx;
 		}
 		this.offsetX = area.x;
 		this.offsetY = area.y;
@@ -149,11 +240,9 @@ class Display {
 	}
 
 	drawDynamics(entities) {
-		this.ctxs.creatures.clearRect(0, 0, this.width * this.tileSize, this.height * this.tileSize);
+		this.buffers.creatures.clear()
 		for (let entity of entities) {
-			let x = (entity.x - this.offsetX) * this.tileSize;
-			let y = (entity.y - this.offsetY) * this.tileSize;
-			this._drawSprite(entity.sprite, x|0, y|0);
+			this._drawSprite(entity.sprite, entity.x, entity.y);
 		}
 	}
 
@@ -161,69 +250,37 @@ class Display {
 		let sprite = this.spritemap.sprite(spritename);
 		if (sprite) {
 			for (let layer in sprite.layers) {
-				sprite.layers[layer].drawOn(this.ctxs[layer], x, y);
+				this.buffers[layer].drawSprite(sprite.layers[layer], x, y);
 			}
 		} else {
-			this.ctxs.base.fillStyle = this._getColor(name);
-			this.ctxs.base.fillRect(x, y, this.tileSize, this.tileSize);
+			this.buffers.base.fillTile(this._getColor(name), x, y);
 		}
 	}
 
 	_drawTile(tileX, tileY, sprites) {
-		let x = (tileX - this.offsetX) * this.tileSize;
-		let y = (tileY - this.offsetY) * this.tileSize;
-		let hoY = y;// - this.tileSize;
-		// this.ctxs.ground.clearRect(x, y, this.tileSize, this.tileSize);
-		this.ctxs.ground.clearRect(x, y, this.tileSize, this.tileSize);
-		this.ctxs.fuzz.globalCompositeOperation = "destination-out";
-		this.fuzzSprite.drawOn(this.ctxs.fuzz, x, y);
-		this.ctxs.fuzz.globalCompositeOperation = "source-over";
-		this.ctxs.base.clearRect(x, y, this.tileSize, this.tileSize);
-		this.ctxs.main.clearRect(x, y, this.tileSize, this.tileSize);
-		this.ctxs.ho.clearRect(x, hoY, this.tileSize, this.tileSize);
+		this.buffers.ground.clearTile(tileX, tileY);
+		this.buffers.fuzz.drawBehind(buffer => buffer.drawSprite(this.fuzzSprite, tileX, tileY));
+		this.buffers.base.clearTile(tileX, tileY);
+		this.buffers.main.clearTile(tileX, tileY);
+		this.buffers.ho.clearTile(tileX, tileY);
 		for (let i=sprites.length; i --> 0;) {
 			let name = sprites[i];
-			this._drawSprite(name, x, y);
+			this._drawSprite(name, tileX, tileY);
 		}
 	}
 
 	_drawBorder(x, y) {
-		let lx = x - this.offsetX;
-		let ly = y - this.offsetY;
-		let px = lx * this.tileSize;
-		let py = ly * this.tileSize;
-		this.ctxs.borders.clearRect(px, py, this.tileSize, this.tileSize);
+		this.buffers.borders.clearTile(x, y);
 		let border = this._borderAt(x, y);
-		if (!border) {
-			return;
+		if (border) {
+			let edges = {
+				left: this._borderAt(x - 1, y) !== border,
+				right: this._borderAt(x + 1, y) !== border,
+				top: this._borderAt(x, y - 1) !== border,
+				bottom: this._borderAt(x, y + 1) !== border,
+			};
+			this.buffers.borders.drawBorders(border, x, y, edges, 1/this.tileSize);
 		}
-		this.ctxs.borders.strokeStyle = border;
-		if (this._borderAt(x - 1, y) !== border) {
-			this.ctxs.borders.beginPath();
-			this.ctxs.borders.moveTo(px+0.5, py);
-			this.ctxs.borders.lineTo(px+0.5, py + this.tileSize);
-			this.ctxs.borders.stroke();
-			// console.log("drawing border", lx, ly, border);
-		}
-		if (this._borderAt(x, y - 1) !== border) {
-			this.ctxs.borders.beginPath();
-			this.ctxs.borders.moveTo(px, py+0.5);
-			this.ctxs.borders.lineTo(px + this.tileSize, py+0.5);
-			this.ctxs.borders.stroke();
-		}
-		if (this._borderAt(x + 1, y) !== border) {
-			this.ctxs.borders.beginPath();
-			this.ctxs.borders.moveTo(px + this.tileSize-0.5, py);
-			this.ctxs.borders.lineTo(px + this.tileSize-0.5, py + this.tileSize);
-			this.ctxs.borders.stroke();
-		}
-		if (this._borderAt(x, y + 1) !== border) {
-			this.ctxs.borders.beginPath();
-			this.ctxs.borders.moveTo(px, py + this.tileSize-0.5);
-			this.ctxs.borders.lineTo(px + this.tileSize, py + this.tileSize-0.5);
-			this.ctxs.borders.stroke();
-		}
-		this.ctxs.borders.stroke();
 	}
 
 	_borderAt(x, y) {
@@ -267,11 +324,11 @@ class Display {
 		for (let layer of this.layers) {
 			let buffer = this.buffers[layer];
 			this.outerCtx.drawImage(
-				buffer,
+				buffer.canvas,
 				this.canvas.width / 2 - centerX,
 				this.canvas.height / 2 - centerY - (layer === "ho" ? tileSize : 0),
-				buffer.width * this.scale,
-				buffer.height * this.scale
+				buffer.canvas.width * tileSize / buffer.resolution,
+				buffer.canvas.height * tileSize / buffer.resolution
 			);
 		}
 	}

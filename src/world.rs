@@ -212,11 +212,11 @@ impl World {
 	}
 	
 	pub fn update(&mut self) {
+		self.time.increment();
+
 		self.update_creatures();
 		
 		self.ground.tick(self.time, self.loaded_areas());
-		
-		self.time.increment();
 	}
 	
 	

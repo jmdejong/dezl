@@ -293,7 +293,7 @@ class Client {
 			let [cx, cy] = this.position.pos;
 			if (this.position.movement && this.tick < this.position.movement.e) {
 				let start = this.position.movement.s;
-				let progress = (this.tick - start) / (this.position.movement.e - start)
+				let progress = (this.tick - start) / (this.position.movement.e - start);
 				cx += (this.position.movement.f[0] - cx) * (1-progress)
 				cy += (this.position.movement.f[1] - cy) * (1-progress)
 			}
@@ -304,13 +304,14 @@ class Client {
 				let [x, y] = entity.p;
 				if (entity.m && this.tick < entity.m.e) {
 					let start = entity.m.s;
-					let progress = (this.tick - start) / (entity.m.e - start)
+					let progress = (this.tick - start) / (entity.m.e - start);
 					x += (entity.m.f[0] - x) * (1 - progress);
 					y += (entity.m.f[1] - y) * (1 - progress);
 				}
 				return {x: x, y: y, sprite: entity.s};
 			}));
 		}
+		this.display.redraw();
 	}
 
 	update(t, duration) {
