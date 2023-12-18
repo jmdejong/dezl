@@ -109,41 +109,41 @@ class Client:
 		elif isinstance(message, messages.MessageMessage):
 			self.log(message.text, message.type)
 		elif isinstance(message, messages.WorldMessage):
-			for msg in message.updates:
-				self.handleWorldUpdate(msg)
+			self.handleWorldUpdate(message.updates)
 	
-	def handleWorldUpdate(self, msg):
-		msgType = msg[0]
-
-		if msgType == 'viewarea':
-			area = msg[1]["area"]
+	def handleWorldUpdate(self, m):
+		viewArea = m.get('viewarea')
+		if viewArea:
+			area = viewArea["area"]
 			self.display.setViewArea(**area)
 
-		if msgType == 'section':
-			section = msg[1]
+		section = m.get('section')
+		if section:
 			rawarea = section["area"]
 			area = ((rawarea["x"], rawarea["y"]), (rawarea["w"], rawarea["h"]))
 			self.display.drawSection(area, section["field"], section["mapping"])
 		
-		if msgType == 'changecells' and len(msg[1]):
-			self.display.drawFieldCells(msg[1])
+		changeCells = m.get('changecells')
+		if changeCells and len(changeCells):
+			self.display.drawFieldCells(changeCells)
 
-		if msgType == "dynamics":
-			self.display.drawDynamics(msg[1])
+		dynamics = m.get('dynamics')
+		if dynamics:
+			self.display.drawDynamics(dynamics)
+
+		playerPos = m.get('playerpos')
+		if playerPos:
+			self.display.setFieldCenter(playerPos["pos"])
+			self.playerPos = playerPos["pos"]
 		
-		if msgType == "playerpos":
-			self.display.setFieldCenter(msg[1]["pos"])
-			self.playerPos = msg[1]["pos"]
-		
-		if msgType == "inventory":
-			items, selected = msg[1]
+		inventory = m.get("inventory")
+		if inventory:
+			items, selected = inventory
 			self.display.setInventory(items, selected)
 
-		if msgType == "message":
-			text, type = msg[1:3]
-			self.log(text, type)
-		if msgType == "messages":
-			for message in msg[1]:
+		sounds = m.get("messages")
+		if sounds:
+			for message in sounds:
 				type = message[0]
 				text = message[1]
 				arg = None
@@ -155,13 +155,6 @@ class Client:
 						self.log("/q {:<24}   - {}".format(command, description))
 				else:
 					self.log(text, type)
-		if msgType == "options":
-			if msg[1] != None:
-				description, options = msg[1]
-				self.log(description)
-				for option in options:
-					self.log(option)
-		
 	
 	def log(self, text, type=None):
 		if not isinstance(text, str):

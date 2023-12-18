@@ -174,9 +174,7 @@ class Client {
 			}
 		} else if (type === "world") {
 			this.tick = data[2];
-			for (let message of data[1]) {
-				this.handleWorldMessage(message);
-			}
+			this.handleWorldMessage(data[1]);
 			this.draw();
 			this.display.redraw();
 		} else {
@@ -184,28 +182,30 @@ class Client {
 		}
 	}
 
-	handleWorldMessage(message){
-		let type = message[0];
-		let args = message[1];
-		if (type === "viewarea") {
-			this.display.setViewArea(args.area);
-		} else if (type === "section") {
-			this.display.drawSection(args.area.w, args.area.h, args.area.x, args.area.y, args.field, args.mapping);
-		} else if (type === "changecells") {
-			this.display.changeTiles(args);
-		} else if (type === "dynamics") {
-			this.entities = args
-		} else if (type == "playerpos") {
-			this.position = args;
-			document.getElementById("coordinates").textContent = `${args.pos[0]}, ${args.pos[1]}`;
-		} else if (type === "inventory") {
-			this.setInventory(args[0], args[1]);
-		} else if (type === "messages") {
-			for (let message of args) {
+	handleWorldMessage(m){
+		if (m.viewarea) {
+			this.display.setViewArea(m.viewarea.area);
+		}
+		if (m.section) {
+			this.display.drawSection(m.section.area.w, m.section.area.h, m.section.area.x, m.section.area.y, m.section.field, m.section.mapping);
+		}
+		if (m.changecells) {
+			this.display.changeTiles(m.changecells);
+		}
+		if (m.dynamics) {
+			this.entities = m.dynamics;
+		}
+		if (m.playerpos) {
+			this.position = m.playerpos;
+			document.getElementById("coordinates").textContent = `${m.playerpos.pos[0]}, ${m.playerpos.pos[1]}`;
+		}
+		if (m.inventory) {
+			this.setInventory(m.inventory[0], m.inventory[1]);
+		}
+		if (m.messages) {
+			for (let message of m.messages) {
 				this.print(message[1], message[0]);
 			}
-		} else {
-			console.log(type, args);
 		}
 	}
 

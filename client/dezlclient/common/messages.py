@@ -129,7 +129,7 @@ class WorldMessage(ServerToClientMessage):
     msglen = 3
     
     def __init__(self, updates, tick):
-        assert isinstance(updates, list), InvalidMessageError
+        assert isinstance(updates, dict), InvalidMessageError
         self.updates = updates
         self.tick = tick
     

@@ -1,7 +1,7 @@
 
 use std::collections::HashMap;
 use serde_json::{Value, json};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use crate::{
 	Pos,
 	pos::Area,
@@ -55,10 +55,10 @@ macro_rules! worldmessages {
 			}
 			
 			pub fn to_json(&self) -> Value {
-				let mut updates: Vec<Value> = Vec::new();
+				let mut updates: HashMap<&str, Value> = HashMap::new();
 				$(
 					if let Some(update) = &self.$name {
-						updates.push(json!([$strname, update]));
+						updates.insert($strname, json!(update));
 					}
 				)*
 				json!(["world", updates, self.tick])
@@ -66,6 +66,7 @@ macro_rules! worldmessages {
 		}
 	}
 }
+
 
 worldmessages!(
 	pos, PositionMessage, "playerpos", true;
