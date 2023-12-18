@@ -141,7 +141,7 @@ class Client:
 			items, selected = inventory
 			self.display.setInventory(items, selected)
 
-		sounds = m.get("messages")
+		sounds = m.get("sounds")
 		if sounds:
 			for message in sounds:
 				type = message[0]

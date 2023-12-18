@@ -167,9 +167,7 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 		let view_done = Instant::now();
 		for (player, mut message) in messages {
 			message_cache.trim(&player, &mut message);
-			if message.is_empty(){
-				continue;
-			}
+
 // 			eprintln!("m {}", message.to_json());
 			if let Err(err) = gameserver.send(&player, message.to_json()) {
 				eprintln!("Error: failed to send to {:?}: {:?}", player, err);

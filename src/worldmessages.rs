@@ -11,32 +11,46 @@ use crate::{
 	creature::{CreatureView, Movement},
 };
 
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct WorldMessage {
+	#[serde(rename = "t")]
+	pub tick: Timestamp,
+	#[serde(skip_serializing_if = "Vec::is_empty")]
+	pub sounds: Vec<(SoundType, String)>,
+	#[serde(rename="playerpos", skip_serializing_if = "Option::is_none")]
+	pub pos: Option<PositionMessage>,
+	#[serde(rename="changecells", skip_serializing_if = "Option::is_none")]
+	pub change: Option<ChangeMessage>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub inventory: Option<InventoryMessage>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub viewarea: Option<ViewAreaMessage>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub section: Option<SectionMessage>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub dynamics: Option<DynamicMessage>,
+
+}
+
+
 macro_rules! worldmessages {
-	($($name: ident, $typ: ident, $strname: expr, $filter: expr);*;) => {
+	($($name: ident),*) => {
 	
-		#[derive(Debug, Clone, PartialEq, Eq)]
-		pub struct WorldMessage {
-			pub tick: Timestamp,
-			$(
-				pub $name: Option<$typ>,
-			)*
-
-		}
-
 		impl WorldMessage {
 
 			pub fn new(tick: Timestamp) -> Self {
 				Self {
 					tick,
+					sounds: Vec::new(),
 					$(
 						$name: None,
 					)*
 				}
 			}
-			
 			pub fn remove_old(&mut self, previous: &WorldMessage){
 				$(
-					if $filter && self.$name == previous.$name {
+					if self.$name == previous.$name {
 						self.$name = None;
 					}
 				)*
@@ -49,39 +63,20 @@ macro_rules! worldmessages {
 					}
 				)*
 			}
-			
-			pub fn is_empty(&self) -> bool {
-				true $( && self.$name.is_none())*
-			}
-			
-			pub fn to_json(&self) -> Value {
-				let mut updates: HashMap<&str, Value> = HashMap::new();
-				$(
-					if let Some(update) = &self.$name {
-						updates.insert($strname, json!(update));
-					}
-				)*
-				json!(["world", updates, self.tick])
-			}
 		}
 	}
 }
 
+impl WorldMessage {
+	pub fn to_json(&self) -> Value {
+		json!(("world", self))
+	}
+}
 
-worldmessages!(
-	pos, PositionMessage, "playerpos", true;
-	change, ChangeMessage, "changecells", true;
-	inventory, InventoryMessage, "inventory", true;
-	sounds, SoundMessage, "messages", false;
-	viewarea, ViewAreaMessage, "viewarea", true;
-	section, SectionMessage, "section", true;
-	dynamics, DynamicMessage, "dynamics", true;
-);
-
+worldmessages!(pos, change,  inventory, viewarea, section, dynamics);
 
 pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, usize);
-pub type SoundMessage = Vec<(SoundType, String)>;
 pub type DynamicMessage = Vec<CreatureView>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]

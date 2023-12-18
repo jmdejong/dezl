@@ -126,15 +126,14 @@ class WorldMessage(ServerToClientMessage):
     """ A message about the world state """
     
     typename = "world"
-    msglen = 3
+    msglen = 2
     
-    def __init__(self, updates, tick):
+    def __init__(self, updates):
         assert isinstance(updates, dict), InvalidMessageError
         self.updates = updates
-        self.tick = tick
     
     def to_json(self):
-        return [self.typename, self.updates, self.tick]
+        return [self.typename, self.updates]
 
 class ErrorMessage(ServerToClientMessage):
     

@@ -173,7 +173,6 @@ class Client {
 				this.print(data[1], data[0]);
 			}
 		} else if (type === "world") {
-			this.tick = data[2];
 			this.handleWorldMessage(data[1]);
 			this.draw();
 			this.display.redraw();
@@ -183,6 +182,7 @@ class Client {
 	}
 
 	handleWorldMessage(m){
+		this.tick = m.t;
 		if (m.viewarea) {
 			this.display.setViewArea(m.viewarea.area);
 		}
@@ -202,9 +202,9 @@ class Client {
 		if (m.inventory) {
 			this.setInventory(m.inventory[0], m.inventory[1]);
 		}
-		if (m.messages) {
-			for (let message of m.messages) {
-				this.print(message[1], message[0]);
+		if (m.sounds) {
+			for (let sound of m.sounds) {
+				this.print(sound[1], sound[0]);
 			}
 		}
 	}

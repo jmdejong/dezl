@@ -259,9 +259,8 @@ impl World {
 				wm.dynamics = Some(dynamics.clone());
 				wm.pos = Some(PositionMessage{pos: body.pos, movement: body.current_movement(self.time)});
 				wm.inventory = Some(body.inventory.view());
-				if !body.heard_sounds.is_empty() {
-					wm.sounds = Some(body.heard_sounds.clone());
-				}
+				wm.sounds = body.heard_sounds.clone();
+
 			}
 			views.insert(playerid.clone(), wm);
 		}
