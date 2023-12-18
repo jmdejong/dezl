@@ -1,7 +1,6 @@
 
 use std::collections::HashMap;
-use serde_json::{Value, json};
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use crate::{
 	Pos,
 	pos::Area,
@@ -64,12 +63,6 @@ macro_rules! worldmessages {
 				)*
 			}
 		}
-	}
-}
-
-impl WorldMessage {
-	pub fn to_json(&self) -> Value {
-		json!(("world", self))
 	}
 }
 

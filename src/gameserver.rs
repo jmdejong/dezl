@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use serde_json::{Value, json};
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Serializer};
 use unicode_categories::UnicodeCategories;
 use time::OffsetDateTime;
 use crate::util::{HolderId, Holder};
@@ -16,23 +16,20 @@ use crate::{
 		ConnectionId,
 		ServerError
 	},
-	PlayerId
+	PlayerId,
+	worldmessages::WorldMessage,
 };
 
 
 
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="lowercase")]
-enum Message {
+enum ClientMessage {
 	Introduction(String),
 	Chat(String),
 	Input(Value)
 }
 
-struct MessageError {
-	typ: String,
-	text: String
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ServerId(usize);
@@ -46,11 +43,48 @@ impl HolderId for ServerId {
 struct ClientId(ServerId, ConnectionId);
 
 
+#[derive(Debug, Clone, Copy, Serialize)]
+#[serde(rename_all="lowercase")]
+pub enum ErrTyp {
+	LoadError,
+	WorldError,
+	InvalidName,
+	InvalidAction,
+	InvalidMessage,
+	NameTaken,
+	ServerError,
+}
+
+struct MessageError {
+	typ: ErrTyp,
+	text: String
+}
+
+#[derive(Debug)]
+pub enum ServerMessage<'a> {
+	World(WorldMessage),
+	Message(&'a str),
+	Connected(String),
+	Error(ErrTyp, &'a str)
+}
+
+impl Serialize for ServerMessage<'_> {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: Serializer {
+		match self {
+			Self::World(worldmessage) => ("world", worldmessage).serialize(serializer),
+			Self::Message(text) => ("message", text, "").serialize(serializer),
+			Self::Connected(text) => ("connected", text).serialize(serializer),
+			Self::Error(typ, text) => ("error", typ, text).serialize(serializer)
+		}
+	}
+}
+
 macro_rules! merr {
-	(name, $text: expr) => {merr!("invalidname", $text)};
-	(action, $text: expr) => {merr!("invalidaction", $text)};
-	(msg, $text: expr) => {merr!("invalidmessage", $text)};
-	($typ: expr, $text: expr) => {MessageError{typ: $typ.to_string(), text: $text.to_string()}};
+	(name, $text: expr) => {merr!(ErrTyp::InvalidName, $text)};
+	(action, $text: expr) => {merr!(ErrTyp::InvalidAction, $text)};
+	(msg, $text: expr) => {merr!(ErrTyp::InvalidMessage, $text)};
+	($typ: expr, $text: expr) => {MessageError{typ: $typ, text: $text.to_string()}};
 }
 
 
@@ -98,13 +132,13 @@ impl GameServer {
 					match self.handle_message(clientid, msg){
 						Ok(Some(action)) => {actions.push(action);}
 						Ok(None) => {}
-						Err(err) => {let _ = self.send_error(clientid, &err.typ, &err.text);}
+						Err(err) => {let _ = self.send_error(clientid, err.typ, &err.text);}
 					}
 				}
 				Err(_err) => {
 					let _ = self.send_error(
 						clientid,
-						"invalidmessage",
+						ErrTyp::InvalidMessage,
 						&format!("Invalid message structure: {}", &content)
 					);
 				}
@@ -120,7 +154,7 @@ impl GameServer {
 		actions
 	}
 	
-	fn send_error(&mut self, clientid: ClientId, errname: &str, err_text: &str) -> Result<(), ServerError>{
+	fn send_error(&mut self, clientid: ClientId, errname: ErrTyp, err_text: &str) -> Result<(), ServerError>{
 		self.servers.get_mut(&clientid.0)
 			.unwrap()
 			.send(clientid.1, json!(["error", errname, err_text]).to_string().as_str())
@@ -128,40 +162,36 @@ impl GameServer {
 	
 	fn broadcast_message(&mut self, text: &str){
 		println!("m {}      {}", text, OffsetDateTime::now_utc());
-		self.broadcast_json(json!(["message", text, ""]));
+		self.broadcast(ServerMessage::Message(text));
 	}
 	
-	fn broadcast_json(&mut self, value: Value){
-		self.broadcast(value.to_string().as_str());
-	}
-	
-	fn broadcast(&mut self, txt: &str){
+	fn broadcast(&mut self, msg: ServerMessage){
 		for ClientId(serverid, id) in self.players.keys() {
 			let _ = self.servers.get_mut(serverid)
 				.unwrap()
-				.send(*id, txt);
+				.send(*id, json!(msg).to_string().as_str());
 		}
 	}
 	
-	pub fn send(&mut self, player: &PlayerId, value: Value) -> Result<(), ServerError> {
+	pub fn send(&mut self, player: &PlayerId, value: ServerMessage) -> Result<(), ServerError> {
 		match self.connections.get(player) {
 			Some(ClientId(serverid, id)) => {
 				self.servers.get_mut(serverid)
 					.unwrap()
-					.send(*id, value.to_string().as_str())
+					.send(*id, json!(value).to_string().as_str())
 			}
 			None => Err(ServerError::Custom(format!("unknown player name {}", player)))
 		}
 	}
 	
-	pub fn send_player_error(&mut self, player: &PlayerId, errname: &str, err_text: &str) -> Result<(), ServerError> {
-		self.send(player, json!(["error", errname, err_text]))
+	pub fn send_player_error(&mut self, player: &PlayerId, typ: ErrTyp, err_text: &str) -> Result<(), ServerError> {
+		self.send(player, ServerMessage::Error(typ, err_text))
 	}
 	
-	fn handle_message(&mut self, clientid: ClientId, msg: Message) -> Result<Option<Action>, MessageError> {
+	fn handle_message(&mut self, clientid: ClientId, msg: ClientMessage) -> Result<Option<Action>, MessageError> {
 		let id = clientid;
 		match msg {
-			Message::Introduction(name) => {
+			ClientMessage::Introduction(name) => {
 				if name.len() > 60 {
 					return Err(merr!(name, "A name can not be longer than 60 bytes"));
 				}
@@ -178,23 +208,22 @@ impl GameServer {
 				}
 				let player = PlayerId(name);
 				if self.connections.contains_key(&player) {
-					return Err(merr!("nametaken", "Another connection to this player exists already"));
+					return Err(merr!(ErrTyp::NameTaken, "Another connection to this player exists already"));
 				}
 				self.broadcast_message(&format!("{} connected", player));
 				self.players.insert(id, player.clone());
 				self.connections.insert(player.clone(), id);
-				let confirmation_message = json!(["connected", format!("successfully connected as {}", player)]);
-				if self.send(&player, confirmation_message).is_err() {
-					return Err(merr!("server", "unable to send connected message"))
+				if self.send(&player, ServerMessage::Connected(format!("successfully connected as {}", player))).is_err() {
+					return Err(merr!(ErrTyp::ServerError, "unable to send connected message"))
 				}
 				Ok(Some(Action::Join(player)))
 			}
-			Message::Chat(text) => {
+			ClientMessage::Chat(text) => {
 				let player = self.players.get(&id).ok_or(merr!(action, "Set a valid name before you send any other messages"))?.clone();
 				self.broadcast_message(&format!("{}: {}", player, text));
 				Ok(None)
 			}
-			Message::Input(inp) => {
+			ClientMessage::Input(inp) => {
 				let player = self.players.get(&id).ok_or(merr!(action, "Set a name before you send any other messages"))?;
 				let control = Control::deserialize(&inp).map_err(|err| merr!(action, &format!("unknown action {} {}", inp, err)))?;
 				Ok(Some(Action::Input(player.clone(), control)))
