@@ -159,6 +159,13 @@ class ConnectedMessage(ServerToClientMessage):
     def to_json(self):
         return [self.typename, self.description]
 
+class WelcomeMessage(ServerToClientMessage):
+
+	typename = "welcome"
+	msglen = 2
+
+	def __init__(self, options):
+		self.options = options
 
 messages = {message.msgType(): message for message in [
     IntroductionMessage,
@@ -167,7 +174,8 @@ messages = {message.msgType(): message for message in [
     WorldMessage,
     ErrorMessage,
     MessageMessage,
-    ConnectedMessage
+    ConnectedMessage,
+    WelcomeMessage
 ]}
 
 def message_from_json(msg):

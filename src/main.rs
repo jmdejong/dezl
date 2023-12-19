@@ -3,6 +3,7 @@ use std::time::{Instant, Duration};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use clap::Parser;
 use time::OffsetDateTime;
+use serde::Serialize;
 
 mod action;
 mod basemap;
@@ -133,18 +134,15 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 						Err(LoaderError::MissingResource(_)) => world.default_player(),
 						Err(err) => {
 							eprintln!("Error loading save for player {:?}: {:?}", player, err);
-							if let Err(senderr) = gameserver.send_player_error(&player, ErrTyp::LoadError, "could not load saved player data") {
-								eprintln!("Error: can not send error message to {:?}: {:?}", player, senderr);
-							}
+							gameserver.send_or_log(&player, ServerMessage::Error(ErrTyp::LoadError, "could not load saved player data"));
 							continue
 						}
 					};
 					if let Err(err) = world.add_player(&player, playersave) {
 						eprintln!("Error: can not add player {:?}: {:?}", player, err);
-						if let Err(senderr) = gameserver.send_player_error(&player, ErrTyp::WorldError, "invalid room or savefile") {
-							eprintln!("Error: can not send error message to {:?}: {:?}", player, senderr);
-						}
+						gameserver.send_or_log(&player, ServerMessage::Error(ErrTyp::WorldError, "invalid room or savefile"));
 					}
+					gameserver.send_or_log(&player, ServerMessage::Welcome(WelcomeMsg{tick_millis: config.step_duration}));
 				}
 				Action::Leave(player) => {
 					if world.has_player(&player) {
@@ -169,9 +167,7 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 			message_cache.trim(&player, &mut message);
 
 // 			eprintln!("m {}", message.to_json());
-			if let Err(err) = gameserver.send(&player, ServerMessage::World(message)) {
-				eprintln!("Error: failed to send to {:?}: {:?}", player, err);
-			}
+			gameserver.send_or_log(&player, ServerMessage::World(message));
 		}
 		let send_done = Instant::now();
 		if world.time.0 % 100 == 1 {
@@ -222,4 +218,7 @@ fn bench_view(iterations: usize) {
 	eprintln!("millis: {}", now.elapsed().as_millis());
 }
 
-
+#[derive(Debug, Serialize)]
+pub struct WelcomeMsg {
+	tick_millis: u64
+}

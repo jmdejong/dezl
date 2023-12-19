@@ -17,6 +17,7 @@ use crate::{
 		ServerError
 	},
 	PlayerId,
+	WelcomeMsg,
 	worldmessages::WorldMessage,
 };
 
@@ -65,6 +66,7 @@ pub enum ServerMessage<'a> {
 	World(WorldMessage),
 	Message(&'a str),
 	Connected(String),
+	Welcome(WelcomeMsg),
 	Error(ErrTyp, &'a str)
 }
 
@@ -75,6 +77,7 @@ impl Serialize for ServerMessage<'_> {
 			Self::World(worldmessage) => ("world", worldmessage).serialize(serializer),
 			Self::Message(text) => ("message", text, "").serialize(serializer),
 			Self::Connected(text) => ("connected", text).serialize(serializer),
+			Self::Welcome(welcome) => ("welcome", welcome).serialize(serializer),
 			Self::Error(typ, text) => ("error", typ, text).serialize(serializer)
 		}
 	}
@@ -183,9 +186,11 @@ impl GameServer {
 			None => Err(ServerError::Custom(format!("unknown player name {}", player)))
 		}
 	}
-	
-	pub fn send_player_error(&mut self, player: &PlayerId, typ: ErrTyp, err_text: &str) -> Result<(), ServerError> {
-		self.send(player, ServerMessage::Error(typ, err_text))
+
+	pub fn send_or_log(&mut self, player: &PlayerId, msg: ServerMessage) {
+		if let Err(senderr) = self.send(&player, msg) {
+			eprintln!("Error: failed to send message to player {:?}: {:?}", player, senderr);
+		}
 	}
 	
 	fn handle_message(&mut self, clientid: ClientId, msg: ClientMessage) -> Result<Option<Action>, MessageError> {

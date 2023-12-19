@@ -176,6 +176,10 @@ class Client {
 			this.handleWorldMessage(data[1]);
 			this.draw();
 			this.display.redraw();
+		} else if (type == "welcome") {
+			if (data[1].tick_millis) {
+				this.fps = 1000 / data[1].tick_millis;
+			}
 		} else {
 			console.log("unknown", data);
 		}
