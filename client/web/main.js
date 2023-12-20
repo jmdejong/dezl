@@ -81,6 +81,7 @@ class Client {
 		this.delay = parseParameters().delay|0;
 		this.tick = 0;
 		this.fps = 10;
+		this.keepRunning = true;
 	}
 	
 	start(){
@@ -147,6 +148,10 @@ class Client {
 			this.sendInput({move: "south"});
 		});
 		this.websocket.addEventListener("error", console.error);
+		this.websocket.addEventListener("close", e => {
+			this.print("Connection lost");
+			this.keepRunning = false;
+		});
 		if (this.delay) {
 			this.websocket.addEventListener("message", msg => setTimeout(() => this.handleMessage(msg), this.delay));
 		} else {
@@ -321,7 +326,9 @@ class Client {
 	update(t, duration) {
 		this.tick += duration / 1000 * this.fps;
 		this.draw();
-		requestAnimationFrame(newTime => this.update(newTime, newTime - t));
+		if (this.keepRunning) {
+			requestAnimationFrame(newTime => this.update(newTime, newTime - t));
+		}
 	}
 }
 
