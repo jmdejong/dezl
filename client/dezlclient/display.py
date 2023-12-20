@@ -59,7 +59,7 @@ class Display:
 	def drawDynamics(self, dynamics):
 		field = self.getWidget("field")
 		knownDynamics = set()
-		for d in dynamics:
+		for d in dynamics.values():
 			x, y = d["p"]
 			pos = (x, y)
 			sprite = d["s"]

@@ -96,7 +96,7 @@ impl Creature {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct CreatureId(pub usize);
 
 impl HolderId for CreatureId {

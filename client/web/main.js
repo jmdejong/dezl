@@ -304,7 +304,7 @@ class Client {
 			this.display.setCenter(cx, cy);
 		}
 		if (this.entities) {
-			this.display.drawDynamics(this.entities.map(entity => {
+			this.display.drawDynamics(Object.entries(this.entities).map(([id, entity]) => {
 				let [x, y] = entity.p;
 				if (entity.m && this.tick < entity.m.e) {
 					let start = entity.m.s;

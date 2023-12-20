@@ -7,7 +7,7 @@ use crate::{
 	Sprite,
 	PlayerId,
 	timestamp::Timestamp,
-	creature::{CreatureView, Movement},
+	creature::{CreatureView, CreatureId, Movement},
 };
 
 
@@ -70,7 +70,7 @@ worldmessages!(pos, change,  inventory, viewarea, section, dynamics);
 
 pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, usize);
-pub type DynamicMessage = Vec<CreatureView>;
+pub type DynamicMessage = HashMap<CreatureId, CreatureView>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct PositionMessage {
