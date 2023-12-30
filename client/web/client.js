@@ -7,7 +7,6 @@ class Client {
 		this.host = host;
 		this.display = display;
 		this.websocket = null;
-		this.tick = 0;
 		this.fps = 10;
 		this.keepRunning = true;
 		let sender = msg => this.send(msg);
@@ -16,6 +15,8 @@ class Client {
 			sender = msg => setTimeout((() => this.send(msg)), delay);
 		}
 		this.control = new Control(sender);
+		this.model = new Model();
+		this.readyToDraw = false;
 	}
 
 	start(){
@@ -147,8 +148,9 @@ class Client {
 	}
 
 	handleWorldMessage(m){
-		this.tick = m.t;
+		this.model.setTime(m.t);
 		if (m.viewarea) {
+			this.readyToDraw = true;
 			this.display.setViewArea(m.viewarea.area);
 		}
 		if (m.section) {
@@ -158,10 +160,10 @@ class Client {
 			this.display.changeTiles(m.changecells);
 		}
 		if (m.dynamics) {
-			this.entities = m.dynamics;
+			this.model.setEntities(m.dynamics);
 		}
 		if (m.playerpos) {
-			this.position = m.playerpos;
+			this.model.setCenter(m.playerpos);
 			document.getElementById("coordinates").textContent = `${m.playerpos.pos[0]}, ${m.playerpos.pos[1]}`;
 		}
 		if (m.inventory) {
@@ -247,34 +249,17 @@ class Client {
 	}
 
 	draw() {
-		if (this.position) {
-			let [cx, cy] = this.position.pos;
-			if (this.position.movement && this.tick < this.position.movement.e) {
-				let start = this.position.movement.s;
-				let progress = (this.tick - start) / (this.position.movement.e - start);
-				cx += (this.position.movement.f[0] - cx) * (1-progress)
-				cy += (this.position.movement.f[1] - cy) * (1-progress)
-			}
-			this.display.setCenter(cx, cy);
-		}
-		if (this.entities) {
-			this.display.drawDynamics(Object.entries(this.entities).map(([id, entity]) => {
-				let [x, y] = entity.p;
-				if (entity.m && this.tick < entity.m.e) {
-					let start = entity.m.s;
-					let progress = (this.tick - start) / (entity.m.e - start);
-					x += (entity.m.f[0] - x) * (1 - progress);
-					y += (entity.m.f[1] - y) * (1 - progress);
-				}
-				return {x: x, y: y, sprite: entity.s};
-			}));
-		}
+		let [cx, cy] = this.model.currentCenter();
+		this.display.setCenter(cx, cy);
+		this.display.drawDynamics(this.model.currentEntities());
 		this.display.redraw();
 	}
 
 	update(t, duration) {
-		this.tick += duration / 1000 * this.fps;
-		this.draw();
+		this.model.stepTime(duration / 1000 * this.fps);
+		if (this.readyToDraw) {
+			this.draw();
+		}
 		if (this.keepRunning) {
 			requestAnimationFrame(newTime => this.update(newTime, newTime - t));
 		}
