@@ -263,7 +263,7 @@ impl World {
 							body.pos.y < area.max().y - EDGE_OFFSET
 					 );
 				if !in_view_range {
-					let (total_area, redraw_area) = Self::new_view_area(body.pos, &player.view_area);
+					let (total_area, redraw_area) = Self::new_view_area(body.pos, &player.view_area());
 					player.view_area = Some(total_area);
 					wm.viewarea = Some(ViewAreaMessage{area: total_area});
 					wm.section = Some(draw_field(redraw_area, &mut self.ground));

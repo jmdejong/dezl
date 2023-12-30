@@ -22,7 +22,7 @@ pub struct Creature {
 	pub mind: Mind,
 	pub pos: Pos,
 	walk_cooldown: Duration,
-	pub sprite: Sprite,
+	sprite: Sprite,
 	pub inventory: Inventory,
 	pub heard_sounds: Vec<(SoundType, String)>,
 	is_dead: bool,
