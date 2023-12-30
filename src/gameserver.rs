@@ -188,7 +188,7 @@ impl GameServer {
 	}
 
 	pub fn send_or_log(&mut self, player: &PlayerId, msg: ServerMessage) {
-		if let Err(senderr) = self.send(&player, msg) {
+		if let Err(senderr) = self.send(player, msg) {
 			eprintln!("Error: failed to send message to player {:?}: {:?}", player, senderr);
 		}
 	}

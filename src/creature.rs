@@ -42,7 +42,7 @@ impl Creature {
 		Self {
 			mind: Mind::Player(playerid),
 			pos: saved.pos,
-			walk_cooldown: Duration(4),
+			walk_cooldown: Duration(2),
 			sprite: Sprite::PlayerDefault,
 			inventory: Inventory::load(saved.inventory),
 			heard_sounds: Vec::new(),

@@ -7,10 +7,15 @@ class Client {
 		this.host = host;
 		this.display = display;
 		this.websocket = null;
-		this.delay = settings.delay|0;
 		this.tick = 0;
 		this.fps = 10;
 		this.keepRunning = true;
+		let sender = msg => this.send(msg);
+		let delay = settings.delay|0;
+		if (delay) {
+			sender = msg => setTimeout((() => this.send(msg)), delay);
+		}
+		this.control = new Control(sender);
 	}
 
 	start(){
@@ -21,46 +26,68 @@ class Client {
 			e.target.send(JSON.stringify({introduction: this.username}));
 		});
 		let keymap = {
-			KeyW: {move: "north"},
-			ArrowUp: {move: "north"},
-			KeyS: {move: "south"},
-			ArrowDown: {move: "south"},
-			KeyA: {move: "west"},
-			ArrowLeft: {move: "west"},
-			KeyD: {move: "east"},
-			ArrowRight: {move: "east"},
-			Period: {select: "next"},
-			Comma: {select: "previous"},
-			NumpadAdd: {select: "next"},
-			NumpadSubtract: {select: "previous"},
-			Equal: {select: "next"},
-			Minus: {select: "previous"},
+			KeyW: this.control.startMoving(NORTH),
+			ArrowUp: this.control.startMoving(NORTH),
+			KeyS: this.control.startMoving(SOUTH),
+			ArrowDown: this.control.startMoving(SOUTH),
+			KeyA: this.control.startMoving(WEST),
+			ArrowLeft: this.control.startMoving(WEST),
+			KeyD: this.control.startMoving(EAST),
+			ArrowRight: this.control.startMoving(EAST),
+			Period: this.control.selectNext(),
+			Comma: this.control.selectPrevious(),
+			NumpadAdd: this.control.selectNext(),
+			NumpadSubtract: this.control.selectPrevious(),
+			Equal: this.control.selectNext(),
+			Minus: this.control.selectPrevious(),
 		};
 		let shiftKeymap = {
-			KeyW: {interact: "north"},
-			ArrowUp: {interact: "north"},
-			KeyS: {interact: "south"},
-			ArrowDown: {interact: "south"},
-			KeyA: {interact: "west"},
-			ArrowLeft: {interact: "west"},
-			KeyD: {interact: "east"},
-			ArrowRight: {interact: "east"},
+			KeyW: this.control.interact(NORTH),
+			ArrowUp: this.control.interact(NORTH),
+			KeyS: this.control.interact(SOUTH),
+			ArrowDown: this.control.interact(SOUTH),
+			KeyA: this.control.interact(WEST),
+			ArrowLeft: this.control.interact(WEST),
+			KeyD: this.control.interact(EAST),
+			ArrowRight: this.control.interact(EAST),
 		}
 		document.addEventListener("keydown", e => {
 			if (document.activeElement.classList.contains("captureinput")){
 				if (e.code == "Escape") {
 					document.activeElement.blur();
+					this.control.stop();
 				}
 				return;
 			}
 			let action = (e.shiftKey && shiftKeymap[e.code]) || keymap[e.code];
 			if (action){
 				e.preventDefault();
-				this.sendInput(action);
+				action();
 			} else {
 				if (e.code == "Enter" || e.code == "KeyT") {
 					e.preventDefault();
 					document.getElementById("textinput").focus()
+				}
+			}
+		});
+		let upKeyMap = {
+			KeyW: this.control.stopMoving(NORTH),
+			ArrowUp: this.control.stopMoving(NORTH),
+			KeyS: this.control.stopMoving(SOUTH),
+			ArrowDown: this.control.stopMoving(SOUTH),
+			KeyA: this.control.stopMoving(WEST),
+			ArrowLeft: this.control.stopMoving(WEST),
+			KeyD: this.control.stopMoving(EAST),
+			ArrowRight: this.control.stopMoving(EAST),
+		}
+		document.addEventListener("keyup", e => {
+			if (document.activeElement.classList.contains("captureinput")){
+				this.control.stop();
+				return;
+			} else {
+				let action = upKeyMap[e.code];
+				if (action) {
+					action();
 				}
 			}
 		});
@@ -189,18 +216,11 @@ class Client {
 		}
 	}
 
-	sendInput(msg) {
-		let f = () => {
-			if (this.websocket.readyState === WebSocket.OPEN){
-				this.websocket.send(JSON.stringify({input: msg}));
-			} else {
-				console.error("can't send input: websocket not open", this.websocket.readyState,  msg);
-			}
-		};
-		if (this.delay) {
-			setTimeout(f, this.delay);
+	send(msg) {
+		if (this.websocket.readyState === WebSocket.OPEN){
+			this.websocket.send(msg);
 		} else {
-			f();
+			console.error("can't send message: websocket not open", this.websocket.readyState,  msg);
 		}
 	}
 

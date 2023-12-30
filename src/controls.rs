@@ -11,6 +11,8 @@ use crate::{
 #[serde(rename_all="lowercase")]
 pub enum Control {
 	Move(Direction),
+	Movement(Direction),
+	Stop,
 	Suicide,
 	Interact(Option<Direction>),
 	Select(Selector),

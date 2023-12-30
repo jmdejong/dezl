@@ -124,6 +124,17 @@ impl World {
 						creature.move_to(newpos, self.time);
 					}
 				}
+				Control::Movement(direction) => {
+					let newpos = creature.pos + *direction;
+					let tile = self.ground.cell(newpos);
+					if !tile.blocking() && !creature_map.contains_key(&newpos) {
+						if creature_map.get(&creature.pos) == Some(id){
+							creature_map.remove(&creature.pos);
+						}
+						creature_map.insert(newpos, *id);
+						creature.move_to(newpos, self.time);
+					}
+				}
 				Control::Suicide => {
 					creature.kill();
 				}
@@ -197,10 +208,15 @@ impl World {
 						creature.heard_sounds.push(message);
 					}
 				}
+				Control::Stop => {}
 			}
 		}
 		for player in self.players.values_mut() {
-			player.plan = None;
+			if let Some(Control::Movement(_)) = player.plan {
+
+			} else {
+				player.plan = None;
+			}
 		}
 		Some(())
 	}
