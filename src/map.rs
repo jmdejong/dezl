@@ -26,11 +26,11 @@ impl Map {
 		}
 	}
 	
-	fn base_cell(&mut self, pos: Pos) -> Tile {
+	fn base_cell(&self, pos: Pos) -> Tile {
 		self.basemap.cell(pos, self.time)
 	}
 	
-	pub fn cell(&mut self, pos: Pos) -> Tile {
+	pub fn cell(&self, pos: Pos) -> Tile {
 		self.changes.get(&pos).map(|change| change.0).unwrap_or_else(|| self.base_cell(pos))
 	}
 
@@ -62,7 +62,7 @@ impl Map {
 		self.set(pos, new_tile )
 	}
 	
-	pub fn player_spawn(&mut self) -> Pos {
+	pub fn player_spawn(&self) -> Pos {
 		self.basemap.player_spawn()
 	}
 	
@@ -127,7 +127,7 @@ impl Map {
 		self.modifications.clear()
 	}
 	
-	pub fn modified(&mut self) -> HashMap<Pos, Tile> {
+	pub fn modified(&self) -> HashMap<Pos, Tile> {
 		self.modifications.clone().into_iter().map(|pos| (pos, self.cell(pos))).collect()
 	}
 	

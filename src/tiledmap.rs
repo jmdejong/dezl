@@ -71,7 +71,7 @@ impl TiledMap {
 
 impl BaseMap for TiledMap {
 
-	fn cell(&mut self, pos: Pos, _time: Timestamp) -> Tile {
+	fn cell(&self, pos: Pos, _time: Timestamp) -> Tile {
 		let Some(chunk) = self.chunks.get(&(pos / self.chunk_size as i32)) else {
 			return Tile::empty();
 		};
@@ -79,7 +79,7 @@ impl BaseMap for TiledMap {
 		chunk[lp.x as usize + lp.y as usize * self.chunk_size]
 	}
 
-	fn player_spawn(&mut self) -> Pos {
+	fn player_spawn(&self) -> Pos {
 		Pos::new(0, 0)
 	}
 }

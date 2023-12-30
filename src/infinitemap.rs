@@ -304,16 +304,16 @@ impl InfiniteMap {
 }
 
 impl BaseMap for InfiniteMap {
-	fn cell(&mut self, pos: Pos, time: Timestamp) -> Tile {
+	fn cell(&self, pos: Pos, time: Timestamp) -> Tile {
 		self.tile(pos, time)
 	}
 
 
-	fn region(&mut self, area: Area, time: Timestamp) -> Vec<(Pos, Tile)> {
+	fn region(&self, area: Area, time: Timestamp) -> Vec<(Pos, Tile)> {
 		area.iter().map(|pos| (pos, self.tile(pos, time))).collect()
 	}
 
-	fn player_spawn(&mut self) -> Pos {
+	fn player_spawn(&self) -> Pos {
 		self.start_pos()
 	}
 }

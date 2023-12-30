@@ -18,13 +18,13 @@ pub enum MapGenError {
 #[enum_dispatch]
 pub trait BaseMap {
 
-	fn cell(&mut self, pos: Pos, time: Timestamp) -> Tile;
+	fn cell(&self, pos: Pos, time: Timestamp) -> Tile;
 	
-	fn region(&mut self, area: Area, time: Timestamp) -> Vec<(Pos, Tile)> {
+	fn region(&self, area: Area, time: Timestamp) -> Vec<(Pos, Tile)> {
 		area.iter().map(|pos| (pos, self.cell(pos, time))).collect()
 	}
 	
-	fn player_spawn(&mut self) -> Pos;
+	fn player_spawn(&self) -> Pos;
 }
 
 
