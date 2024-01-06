@@ -262,7 +262,6 @@ impl Area {
 		Pos::new(x, y) + self.min
 	}
 	
-	#[allow(dead_code)]
 	pub fn grow(&self, n: i32) -> Area {
 		let nn = Pos::new(n, n);
 		Area::new(self.min - nn, self.size + nn * 2)
@@ -273,10 +272,6 @@ impl Area {
 			&& pos.x < self.max().x
 			&& pos.y >= self.min().y
 			&& pos.y < self.max().y
-	}
-
-	pub fn contains_area(&self, area: Area) -> bool {
-		self.contains(area.min()) && self.contains(area.max())
 	}
 
 	pub fn overlaps(&self, other: &Area) -> bool {

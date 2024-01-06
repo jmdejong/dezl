@@ -3,7 +3,6 @@ use std::fmt;
 use serde::{Serialize, Deserialize};
 
 use crate::{
-	pos::Area,
 	controls::Control,
 	creature::CreatureId
 };
@@ -21,8 +20,6 @@ impl fmt::Display for PlayerId {
 pub struct Player {
 	pub plan: Option<Control>,
 	pub body: CreatureId,
-	pub view_area: Option<Area>,
-	pub new_area: Option<Area>,
 }
 
 
@@ -32,13 +29,7 @@ impl Player {
 		Self {
 			plan: None,
 			body,
-			view_area: None,
-			new_area: None,
 		}
-	}
-
-	pub fn view_area(&self) -> Option<Area>{
-		self.view_area
 	}
 }
 

@@ -6,7 +6,7 @@ use crate::{
 	PlayerId,
 	config::MapDef,
 	controls::{Control},
-	pos::{Pos, Area, Direction},
+	pos::{Pos, Direction},
 	util::Holder,
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
@@ -14,11 +14,9 @@ use crate::{
 	player::Player,
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
+	loadedareas::LoadedAreas,
 	random,
 };
-
-const EDGE_OFFSET: i32 = 32;
-const VIEW_AREA_SIZE: Pos = Pos::new(128, 128);
 
 pub struct World {
 	pub name: String,
@@ -28,7 +26,8 @@ pub struct World {
 	creatures: Holder<CreatureId, Creature>,
 	spawned_creatures: HashMap<SpawnId, CreatureId>,
 	claims: HashMap<PlayerId, Pos>,
-	mapdef: MapDef
+	mapdef: MapDef,
+	loaded_areas: LoadedAreas,
 }
 
 impl World {
@@ -43,7 +42,8 @@ impl World {
 			time,
 			claims: HashMap::new(),
 			spawned_creatures: HashMap::new(),
-			mapdef
+			mapdef,
+			loaded_areas: LoadedAreas::new(),
 		}
 	}
 	
@@ -231,36 +231,36 @@ impl World {
 		Some(())
 	}
 
+	fn update_loaded_areas(&mut self) {
+		let player_positions: Vec<(PlayerId, Pos)> = self.players.iter()
+			.filter_map(|(player_id, player)| Some((player_id.clone(), self.creatures.get(&player.body)?.pos)))
+			.collect();
+		self.loaded_areas.update(&player_positions);
+		for fresh_area in self.loaded_areas.all_fresh() {
+			self.ground.load_area(fresh_area);
+		}
+		self.ground.tick(self.time, self.loaded_areas.all_loaded());
+	}
+
 	fn spawn_creatures(&mut self) {
 		for (spawn_id, npc) in self.ground.spawns() {
 			if self.spawned_creatures.contains_key(&spawn_id) {
 				continue;
 			}
-			println!("spawning {:?} npc at {:?}", npc, spawn_id);
+			// println!("spawning {:?} npc at {:?}", npc, spawn_id);
 			let body = self.creatures.insert(Creature::spawn_npc(spawn_id, npc));
 			self.spawned_creatures.insert(spawn_id, body);
 		}
-	}
-
-	fn update_loaded_areas(&mut self) {
-		for player in self.players.values_mut() {
-			player.new_area = None;
-			if let Some(body) = self.creatures.get(&player.body) {
-				let in_view_range = player.view_area()
-					.map(|area| area.contains_area(Area::centered(body.pos, Pos::new(EDGE_OFFSET*2, EDGE_OFFSET*2))))
-					.unwrap_or(false);
-				if !in_view_range {
-					let (total_area, new_area) = Self::new_view_area(body.pos, &player.view_area());
-					player.view_area = Some(total_area);
-					player.new_area = Some(new_area);
-					self.ground.load_area(new_area);
-				}
+		self.spawned_creatures.retain(|_spawn_id, body_id| {
+			let pos = self.creatures.get(body_id).unwrap().pos;
+			if !self.loaded_areas.is_loaded(pos) {
+				// println!("despawning npc {:?} from {:?}", _spawn_id, pos);
+				self.creatures.remove(body_id);
+				false
+			} else {
+				true
 			}
-		}
-		let loaded_areas = self.players.values()
-			.filter_map(Player::view_area)
-			.collect();
-			self.ground.tick(self.time, loaded_areas);
+		})
 	}
 	
 	pub fn update(&mut self) {
@@ -286,11 +286,11 @@ impl World {
 		let dynamics: HashMap<CreatureId, CreatureView> = self.creatures.iter()
 			.map(|(id, creature)| (*id, creature.view()))
 			.collect();
-		for (playerid, player) in self.players.iter() {
+		for (id, player) in self.players.iter() {
 			let mut wm = WorldMessage::new(self.time);
 			if let Some(body) = self.creatures.get(&player.body) {
-				wm.viewarea = player.view_area().map(|area| ViewAreaMessage{area});
-				wm.section = player.new_area.map(|area| self.ground.view(area));
+				wm.viewarea = self.loaded_areas.loaded(id).map(|area| ViewAreaMessage{area});
+				wm.section = self.loaded_areas.fresh(id).map(|area| self.ground.view(area));
 				if changes.is_some() {
 					wm.change = changes.clone();
 				}
@@ -300,40 +300,10 @@ impl World {
 				wm.sounds = body.heard_sounds.clone();
 
 			}
-			views.insert(playerid.clone(), wm);
+			views.insert(id.clone(), wm);
 		}
 		views
 	}
-
-	fn new_view_area(body_pos: Pos, view_area: &Option<Area>) -> (Area, Area) {
-		let core_area = Area::centered(body_pos, VIEW_AREA_SIZE);
-		let Some(old_area) = view_area else {
-			return (core_area, core_area);
-		};
-		if !core_area.overlaps(old_area) {
-			return (core_area, core_area);
-		}
-		if body_pos.x <= old_area.min().x + EDGE_OFFSET {
-			let new_min = Pos::new(body_pos.x - VIEW_AREA_SIZE.x / 2, old_area.min().y);
-			(Area::new(new_min, VIEW_AREA_SIZE), Area::between(new_min, Pos::new(old_area.min().x, old_area.max().y)))
-		} else if body_pos.y <= old_area.min().y + EDGE_OFFSET {
-			let new_min = Pos::new(old_area.min().x, body_pos.y - VIEW_AREA_SIZE.y / 2);
-			(Area::new(new_min, VIEW_AREA_SIZE), Area::between(new_min, Pos::new(old_area.max().x, old_area.min().y)))
-		} else if body_pos.x >= old_area.max().x - EDGE_OFFSET {
-			let new_min = Pos::new(body_pos.x - VIEW_AREA_SIZE.x / 2, old_area.min().y);
-			let new_area = Area::new(new_min, VIEW_AREA_SIZE);
-			(new_area, Area::between(Pos::new(old_area.max().x, old_area.min().y), new_area.max()))
-		} else if body_pos.y >= old_area.max().y - EDGE_OFFSET {
-			let new_min = Pos::new(old_area.min().x, body_pos.y - VIEW_AREA_SIZE.y / 2);
-			let new_area = Area::new(new_min, VIEW_AREA_SIZE);
-			(new_area, Area::between(Pos::new(old_area.min().x, old_area.max().y), new_area.max()))
-		} else {
-			// this function shouldn't get called when this is the case, but let's do something somewhat sensible anyways
-			(core_area, core_area)
-		}
-	}
-
-
 	
 	pub fn save(&self) -> WorldSave {
 		WorldSave {
@@ -355,6 +325,7 @@ impl World {
 			time: save.time,
 			claims: save.claims,
 			mapdef: save.mapdef,
+			loaded_areas: LoadedAreas::new(),
 		}
 	}
 }
