@@ -22,7 +22,7 @@ time = "0.3.21"
 json5 = "0.2.8"
 tungstenite = "0.17.3"
 enum_dispatch = "0.3.8"
-enum-assoc = { version = "0.4.0", git = "https://github.com/Adhalianna/enum-assoc" }
+enum-assoc = "1.1.0"
 
 [profile.release]
 debug = true
