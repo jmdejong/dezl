@@ -28,6 +28,12 @@ pub struct StreamConnection<T: Read+Write> {
 	buffer: Vec<u8>
 }
 
+impl <T: Read+Write> StreamConnection<T> {
+	pub fn stream(&self) -> &T {
+		&self.stream
+	}
+}
+
 impl <T: Read+Write>Connection<T> for StreamConnection<T> {
 
 	fn new(stream: T) -> Result<Self, ConnectionError> {
@@ -112,7 +118,7 @@ impl <T: Read+Write>Connection<T> for WebSocketConnection<T> {
 		let mut messages = Vec::new();
 		let mut is_closed = false;
 		loop {
-			match self.websocket.read_message() {
+			match self.websocket.read() {
 				Err(err) => {
 					if is_wouldblock_error(&err) {
 						break;
@@ -137,7 +143,7 @@ impl <T: Read+Write>Connection<T> for WebSocketConnection<T> {
 	}
 	
 	fn send(&mut self, text: &str) -> Result<(), ConnectionError> {
-		self.websocket.write_message(Message::Text(text.to_string()))
+		self.websocket.write(Message::Text(text.to_string()))
 			.map_err(ConnectionError::Tungstenite)
 	}
 }
