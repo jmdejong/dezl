@@ -93,16 +93,16 @@ class Client {
 			}
 		});
 		document.getElementById("control-up").addEventListener("click", e => {
-			this.sendInput({move: "north"});
+			this.control.moveOnce(NORTH);
 		});
 		document.getElementById("control-left").addEventListener("click", e => {
-			this.sendInput({move: "west"});
+			this.control.moveOnce(WEST);
 		});
 		document.getElementById("control-right").addEventListener("click", e => {
-			this.sendInput({move: "east"});
+			this.control.moveOnce(EAST);
 		});
 		document.getElementById("control-down").addEventListener("click", e => {
-			this.sendInput({move: "south"});
+			this.control.moveOnce(SOUTH);
 		});
 		this.websocket.addEventListener("error", console.error);
 		this.websocket.addEventListener("close", e => {
@@ -189,9 +189,7 @@ class Client {
 			let name = item[0];
 			let quantity = item[1];
 			let row = document.createElement("li");
-			row.onclick = e => {
-				this.sendInput({select: {idx: i | 0}});
-			}
+			row.onclick = this.control.selectIndex(i | 0);
 			row.className = "inv-row";
 
 			let nm = document.createElement("span");

@@ -157,10 +157,8 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 		}
 
 		let read_done = Instant::now();
-		// let start = Instant::now();
 		world.update();
 		let update_done = Instant::now();
-		// let update_time = now.elapsed();
 		let messages = world.view();
 		let view_done = Instant::now();
 		for (player, mut message) in messages {
@@ -177,7 +175,8 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 		let elapsed_time = update_start.elapsed();
 		if elapsed_time >= Duration::from_millis(5) {
 			eprintln!(
-				"Step took {} milliseconds. read: {}, update: {}, view: {}, send: {}, save: {}",
+				"Step {} took {} milliseconds. read: {}, update: {}, view: {}, send: {}, save: {}",
+				world.time.0,
 				elapsed_time.as_millis(),
 				read_done.duration_since(update_start).as_millis(),
 				update_done.duration_since(read_done).as_millis(),

@@ -14,7 +14,8 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Mind {
-	Player(PlayerId)
+	Player(PlayerId),
+	Spawned(SpawnId),
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +34,8 @@ impl Creature {
 	
 	pub fn player(&self) -> Option<PlayerId> {
 		match &self.mind {
-			Mind::Player(id) => Some(id.clone())
+			Mind::Player(id) => Some(id.clone()),
+			Mind::Spawned(_) => None,
 		}
 	}
 	
@@ -141,4 +143,8 @@ pub struct Movement {
 	#[serde(rename = "e")]
 	pub end: Timestamp,
 }
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SpawnId(Pos);
 

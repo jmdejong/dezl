@@ -1,10 +1,12 @@
 
 use std::collections::{HashMap, HashSet};
+use serde::Serialize;
 use crate::{
 	pos::{Pos, Area, Direction},
 	tile::{Tile, Structure, Ground},
 	basemap::{BaseMap, BaseMapImpl},
 	timestamp::{Timestamp, Duration},
+	sprite::Sprite,
 	randomtick
 };
 
@@ -34,13 +36,16 @@ impl Map {
 		self.changes.get(&pos).map(|change| change.0).unwrap_or_else(|| self.base_cell(pos))
 	}
 
-	pub fn load_area(&mut self, area: Area) -> impl Iterator<Item = Tile> + '_ {
-		// let base_grid = self.basemap.region(area, self.time);
+	fn region(&self, area: Area) -> impl Iterator<Item = Tile> + '_ {
 		self.basemap.region(area, self.time).into_iter().map(|(pos, base_cell)| {
-			// let base_cell = self.base_cell(pos);
-			self.tick_one(pos, base_cell);
 			self.changes.get(&pos).map(|change| change.0).unwrap_or(base_cell)
 		})
+	}
+
+	pub fn load_area(&mut self, area: Area) {
+		for pos in Area::centered(area.min() + area.size() / 2, Pos::new(128, 128)).iter() {
+			self.tick_one(pos);
+		}
 	}
 
 	pub fn set(&mut self, pos: Pos, tile: Tile) {
@@ -81,13 +86,12 @@ impl Map {
 			})
 			.collect::<HashSet<Pos>>();
 		for pos in tick_positions {
-			let base_cell = self.basemap.cell(pos, self.time);
-			self.tick_one(pos, base_cell);
+			self.modifications.insert(pos);
+			self.tick_one(pos);
 		}
 	}
 	
-	fn tick_one(&mut self, pos: Pos, base_cell: Tile) {
-		self.modifications.insert(pos);
+	fn tick_one(&mut self, pos: Pos) {
 		let tick_interval = randomtick::CHUNK_AREA;
 		if let Some((mut built, mut built_time)) = self.changes.get(&pos) {
 			while let Some((nticks, stage, surround)) = built.grow() {
@@ -115,10 +119,11 @@ impl Map {
 					break
 				}
 			}
-			if built.structure.is_open()
-					&& (built.ground.restoring() || built.ground == base_cell.ground)
-					&& base_cell.structure.is_open() {
-				self.changes.remove(&pos);
+			if built.structure.is_open() {
+				let base_cell = self.base_cell(pos);
+				if  (built.ground.restoring() || built.ground == base_cell.ground) && base_cell.structure.is_open() {
+					self.changes.remove(&pos);
+				}
 			}
 		}
 	}
@@ -143,6 +148,38 @@ impl Map {
 			modifications: HashSet::new()
 		}
 	}
+
+	pub fn view(&self, area: Area) -> SectionView {
+		let mut values :Vec<usize> = Vec::with_capacity((area.size().x * area.size().y) as usize);
+		let mut mapping: Vec<Vec<Sprite>> = Vec::new();
+		for tile in self.region(area) {
+			let tile_sprites = tile.sprites();
+			values.push(
+				match mapping.iter().position(|x| x == &tile_sprites) {
+					Some(index) => {
+						index
+					}
+					None => {
+						mapping.push(tile_sprites);
+						mapping.len() - 1
+					}
+				}
+			)
+		}
+		SectionView {
+			area,
+			field: values,
+			mapping
+		}
+	}
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct SectionView {
+	pub field: Vec<usize>,
+	pub mapping: Vec<Vec<Sprite>>,
+	pub area: Area
 }
 
 pub type MapSave = Vec<(Pos, (Tile, Timestamp))>;

@@ -21,7 +21,8 @@ impl fmt::Display for PlayerId {
 pub struct Player {
 	pub plan: Option<Control>,
 	pub body: CreatureId,
-	pub view_area: Option<Area>
+	pub view_area: Option<Area>,
+	pub new_area: Option<Area>,
 }
 
 
@@ -31,7 +32,8 @@ impl Player {
 		Self {
 			plan: None,
 			body,
-			view_area: None
+			view_area: None,
+			new_area: None,
 		}
 	}
 

@@ -135,7 +135,7 @@ impl InfiniteMap {
 		let (bpos, dpos) = self.biome_pos(pos);
 		let biome = self.biome_at(bpos);
 		let rind = WhiteNoise::new(self.seed + 7943).gen(pos);
-		let rtime = randomtick::tick_num(pos, time) as u32 + WhiteNoise::new(self.seed + 356).gen(pos);
+		let rtime = WhiteNoise::new(self.seed + 356).gen(pos).wrapping_add(randomtick::tick_num(pos, time) as u32);
 		match biome {
 			Biome::Start => {
 				let dspawn = dpos.abs();

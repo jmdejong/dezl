@@ -8,6 +8,7 @@ use crate::{
 	PlayerId,
 	timestamp::Timestamp,
 	creature::{CreatureView, CreatureId, Movement},
+	map::SectionView,
 };
 
 
@@ -26,7 +27,7 @@ pub struct WorldMessage {
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub viewarea: Option<ViewAreaMessage>,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub section: Option<SectionMessage>,
+	pub section: Option<SectionView>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub dynamics: Option<DynamicMessage>,
 
@@ -81,13 +82,6 @@ pub struct PositionMessage {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct ViewAreaMessage {
-	pub area: Area
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct SectionMessage {
-	pub field: Vec<usize>,
-	pub mapping: Vec<Vec<Sprite>>,
 	pub area: Area
 }
 

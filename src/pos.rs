@@ -275,6 +275,10 @@ impl Area {
 			&& pos.y < self.max().y
 	}
 
+	pub fn contains_area(&self, area: Area) -> bool {
+		self.contains(area.min()) && self.contains(area.max())
+	}
+
 	pub fn overlaps(&self, other: &Area) -> bool {
 		! (self.min().x >= other.max().x || self.max().x <= other.min().x || self.min().y >= other.max().y || self.max().y <= other.min().y)
 	}

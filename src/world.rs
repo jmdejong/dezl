@@ -8,10 +8,9 @@ use crate::{
 	controls::{Control},
 	pos::{Pos, Area},
 	util::Holder,
-	sprite::Sprite,
-	worldmessages::{WorldMessage, SectionMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
+	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
-	creature::{Creature, Mind, CreatureId, PlayerSave, CreatureView},
+	creature::{Creature, Mind, CreatureId, PlayerSave, CreatureView, SpawnId},
 	player::Player,
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
@@ -26,6 +25,7 @@ pub struct World {
 	ground: Map,
 	players: HashMap<PlayerId, Player>,
 	creatures: Holder<CreatureId, Creature>,
+	spawned_creatures: HashMap<SpawnId, CreatureId>,
 	claims: HashMap<PlayerId, Pos>,
 	mapdef: MapDef
 }
@@ -41,6 +41,7 @@ impl World {
 			creatures: Holder::new(),
 			time,
 			claims: HashMap::new(),
+			spawned_creatures: HashMap::new(),
 			mapdef
 		}
 	}
@@ -94,6 +95,7 @@ impl World {
 					player.plan.clone()
 				} else {Some(Control::Suicide)}
 			}
+			Mind::Spawned(_) => None
 		}
 	}
 	
@@ -220,23 +222,37 @@ impl World {
 		}
 		Some(())
 	}
-	
-	fn loaded_areas(&self) -> Vec<Area> {
-		self.players.values()
+
+	fn update_loaded_areas(&mut self) {
+		for player in self.players.values_mut() {
+			player.new_area = None;
+			if let Some(body) = self.creatures.get(&player.body) {
+				let in_view_range = player.view_area()
+					.map(|area| area.contains_area(Area::centered(body.pos, Pos::new(EDGE_OFFSET*2, EDGE_OFFSET*2))))
+					.unwrap_or(false);
+				if !in_view_range {
+					let (total_area, new_area) = Self::new_view_area(body.pos, &player.view_area());
+					player.view_area = Some(total_area);
+					player.new_area = Some(new_area);
+					self.ground.load_area(new_area);
+				}
+			}
+		}
+		let loaded_areas = self.players.values()
 			.filter_map(Player::view_area)
-			.collect()
+			.collect();
+			self.ground.tick(self.time, loaded_areas);
 	}
 	
 	pub fn update(&mut self) {
+		self.ground.flush();
 		self.time.increment();
-
 		self.update_creatures();
-		
-		self.ground.tick(self.time, self.loaded_areas());
+		self.update_loaded_areas();
 	}
 	
 	
-	fn draw_changes(&mut self) -> Option<ChangeMessage> {
+	fn draw_changes(&self) -> Option<ChangeMessage> {
 		Some(
 			self.ground.modified().into_iter()
 				.map(|(pos, tile)| (pos, tile.sprites()))
@@ -244,30 +260,17 @@ impl World {
 		)
 	}
 	
-	pub fn view(&mut self) -> HashMap<PlayerId, WorldMessage> {
+	pub fn view(&self) -> HashMap<PlayerId, WorldMessage> {
 		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
 		let dynamics: HashMap<CreatureId, CreatureView> = self.players.values()
 			.filter_map(|player| Some((player.body, self.creatures.get(&player.body)?.view())))
 			.collect();
-		for (playerid, player) in self.players.iter_mut() {
+		for (playerid, player) in self.players.iter() {
 			let mut wm = WorldMessage::new(self.time);
 			if let Some(body) = self.creatures.get(&player.body) {
-				let in_view_range = player.view_area()
-					.map_or(
-						false,
-						|area|
-							body.pos.x > area.min().x + EDGE_OFFSET &&
-							body.pos.x < area.max().x - EDGE_OFFSET &&
-							body.pos.y > area.min().y + EDGE_OFFSET &&
-							body.pos.y < area.max().y - EDGE_OFFSET
-					 );
-				if !in_view_range {
-					let (total_area, redraw_area) = Self::new_view_area(body.pos, &player.view_area());
-					player.view_area = Some(total_area);
-					wm.viewarea = Some(ViewAreaMessage{area: total_area});
-					wm.section = Some(draw_field(redraw_area, &mut self.ground));
-				}
+				wm.viewarea = player.view_area().map(|area| ViewAreaMessage{area});
+				wm.section = player.new_area.map(|area| self.ground.view(area));
 				if changes.is_some() {
 					wm.change = changes.clone();
 				}
@@ -279,7 +282,6 @@ impl World {
 			}
 			views.insert(playerid.clone(), wm);
 		}
-		self.ground.flush();
 		views
 	}
 
@@ -329,6 +331,7 @@ impl World {
 			ground: Map::load(save.ground, save.time, basemap),
 			players: HashMap::new(),
 			creatures: Holder::new(),
+			spawned_creatures: HashMap::new(),
 			time: save.time,
 			claims: save.claims,
 			mapdef: save.mapdef,
@@ -336,32 +339,6 @@ impl World {
 	}
 }
 
-
-fn draw_field(area: Area, tiles: &mut Map) -> SectionMessage {
-	// println!("redrawing field");
-	let mut values :Vec<usize> = Vec::with_capacity((area.size().x * area.size().y) as usize);
-	let mut mapping: Vec<Vec<Sprite>> = Vec::new();
-	for tile in tiles.load_area(area) {
-		let mut tile_sprites = Vec::new();
-		tile_sprites.append(&mut tile.sprites());
-		values.push(
-			match mapping.iter().position(|x| x == &tile_sprites) {
-				Some(index) => {
-					index
-				}
-				None => {
-					mapping.push(tile_sprites);
-					mapping.len() - 1
-				}
-			}
-		)
-	}
-	SectionMessage {
-		area,
-		field: values,
-		mapping
-	}
-}
 
 #[derive(Debug)]
 pub enum PlayerError {

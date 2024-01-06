@@ -52,6 +52,10 @@ class Control {
 		return () => this.send({select:  "previous"});
 	}
 
+	selectIndex(index) {
+		return () => this.send({select: {idx: index}});
+	}
+
 }
 
 
