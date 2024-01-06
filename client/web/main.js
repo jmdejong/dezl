@@ -12,8 +12,8 @@ function main(){
 	}
 
 	let params = new URLSearchParams(window.location.search);
-	if (params.get("login") == "true") {
-		start(loginForm.username.value, loginForm.host.value);
+	if (params.get("login")) {
+		start(params.get("login"), loginForm.host.value);
 	} else {
 		loginForm.addEventListener("submit", e => start(e.target.username.value, e.target.host.value));
 	}

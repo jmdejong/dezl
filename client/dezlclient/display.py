@@ -28,7 +28,7 @@ class Display:
 		self.inventory = ListSelector(self.getWidget("inventory"))
 		self.inventory._debug_name = "inventory"
 		self.fieldBuffer = {}
-		self.previousDynamics = set()
+		self.knownDynamics = {}
 	
 	def getWidget(self, name):
 		return self.layout.get(name)
@@ -52,23 +52,26 @@ class Display:
 		field = self.getWidget("field")
 		for cell in cells:
 			(x, y), spriteNames = cell
+			pos = (x, y)
+			self.fieldBuffer[pos] = spriteNames
+			if pos in self.knownDynamics:
+				spriteNames = [self.knownDynamics[pos], *spriteNames]
 			brush = self.brush(spriteNames)
 			field.change_cell(x, y, *brush)
-			self.fieldBuffer[(x, y)] = spriteNames
 
 	def drawDynamics(self, dynamics):
 		field = self.getWidget("field")
-		knownDynamics = set()
+		previousDynamics = set(self.knownDynamics.keys())
+		self.knownDynamics = {}
 		for d in dynamics.values():
 			x, y = d["p"]
 			pos = (x, y)
 			sprite = d["s"]
-			field.change_cell(x, y, *self.brush([sprite, *self.fieldBuffer.get((x, y), [])]))
-			self.previousDynamics.discard(pos)
-			knownDynamics.add(pos)
-		for (x, y) in self.previousDynamics:
+			previousDynamics.discard(pos)
+			self.knownDynamics[pos] = sprite
+			field.change_cell(x, y, *self.brush([sprite, *self.fieldBuffer.get(pos, [])]))
+		for (x, y) in previousDynamics:
 			field.change_cell(x, y, *self.brush(self.fieldBuffer.get((x, y), [])))
-		self.previousDynamics = knownDynamics
 	
 	def brush(self, spriteNames):
 		if not len(spriteNames):
