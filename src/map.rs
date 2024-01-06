@@ -7,6 +7,7 @@ use crate::{
 	basemap::{BaseMap, BaseMapImpl},
 	timestamp::{Timestamp, Duration},
 	sprite::Sprite,
+	creature::{SpawnId, Npc},
 	randomtick
 };
 
@@ -14,7 +15,8 @@ pub struct Map {
 	basemap: BaseMapImpl,
 	changes: HashMap<Pos, (Tile, Timestamp)>,
 	time: Timestamp,
-	modifications: HashSet<Pos>
+	modifications: HashSet<Pos>,
+	spawns: Vec<(SpawnId, Npc)>
 }
 
 impl Map {
@@ -24,7 +26,8 @@ impl Map {
 			basemap,
 			changes: HashMap::new(),
 			time,
-			modifications: HashSet::new()
+			modifications: HashSet::new(),
+			spawns: Vec::new(),
 		}
 	}
 	
@@ -126,14 +129,22 @@ impl Map {
 				}
 			}
 		}
+		if let Some(npc) = self.cell(pos).spawn() {
+			self.spawns.push((SpawnId(pos), npc));
+		}
 	}
 	
 	pub fn flush(&mut self) {
-		self.modifications.clear()
+		self.modifications.clear();
+		self.spawns.clear();
 	}
 	
 	pub fn modified(&self) -> HashMap<Pos, Tile> {
 		self.modifications.clone().into_iter().map(|pos| (pos, self.cell(pos))).collect()
+	}
+
+	pub fn spawns(&self) -> Vec<(SpawnId, Npc)> {
+		self.spawns.clone()
 	}
 	
 	pub fn save(&self) -> MapSave {
@@ -145,7 +156,8 @@ impl Map {
 			basemap,
 			changes: changes.into_iter().collect(),
 			time,
-			modifications: HashSet::new()
+			modifications: HashSet::new(),
+			spawns: Vec::new(),
 		}
 	}
 

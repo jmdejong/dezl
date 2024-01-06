@@ -72,5 +72,6 @@ pub enum Sprite {
 	SawBlade,
 	SawTable,
 	SawPlant,
+	Frog,
 	Unknown,
 }

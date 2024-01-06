@@ -52,6 +52,19 @@ impl Creature {
 			movement: None,
 		}
 	}
+
+	pub fn spawn_npc(spawn_id: SpawnId, _npc: Npc) -> Self {
+		Self {
+			mind: Mind::Spawned(spawn_id),
+			pos: spawn_id.0,
+			walk_cooldown: Duration(3),
+			sprite: Sprite::Frog,
+			inventory: Inventory::load(Vec::new()),
+			heard_sounds: Vec::new(),
+			is_dead: false,
+			movement: None,
+		}
+	}
 	
 	pub fn kill(&mut self) {
 		self.is_dead = true;
@@ -145,6 +158,11 @@ pub struct Movement {
 }
 
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SpawnId(Pos);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct SpawnId(pub Pos);
 
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum Npc {
+	Frog
+}

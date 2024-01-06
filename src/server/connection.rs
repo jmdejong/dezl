@@ -152,6 +152,7 @@ impl Peek for mio::net::TcpStream {
 	}
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum DynCon<T: Read+Write+Peek> {
 	Web(WebSocketConnection<T>),
 	TCon(StreamConnection<T>),

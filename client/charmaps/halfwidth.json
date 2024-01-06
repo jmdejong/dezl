@@ -96,6 +96,7 @@
 		"hardwoodtable": ["0", 3],
 		"sawblade": ["q", 3],
 		"sawtable": ["P", 3],
+		"frog": ["f", 10],
 		" ": [" ", 7]
 	},
 	"writable": {

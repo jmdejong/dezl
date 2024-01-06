@@ -6,7 +6,7 @@ use crate::{
 	PlayerId,
 	config::MapDef,
 	controls::{Control},
-	pos::{Pos, Area},
+	pos::{Pos, Area, Direction},
 	util::Holder,
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
@@ -14,6 +14,7 @@ use crate::{
 	player::Player,
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
+	random,
 };
 
 const EDGE_OFFSET: i32 = 32;
@@ -95,7 +96,14 @@ impl World {
 					player.plan.clone()
 				} else {Some(Control::Suicide)}
 			}
-			Mind::Spawned(_) => None
+			Mind::Spawned(SpawnId(origin)) => {
+				let rind = random::randomize_u32(random::randomize_pos(*origin) + self.time.0 as u32);
+				if random::randomize_u32(rind + 543) % 10 == 0 {
+					Some(Control::Move(*random::pick(random::randomize_u32(rind + 385), &[Direction::North, Direction::South, Direction::East, Direction::West])))
+				} else {
+					None
+				}
+			}
 		}
 	}
 	
@@ -223,6 +231,17 @@ impl World {
 		Some(())
 	}
 
+	fn spawn_creatures(&mut self) {
+		for (spawn_id, npc) in self.ground.spawns() {
+			if self.spawned_creatures.contains_key(&spawn_id) {
+				continue;
+			}
+			println!("spawning {:?} npc at {:?}", npc, spawn_id);
+			let body = self.creatures.insert(Creature::spawn_npc(spawn_id, npc));
+			self.spawned_creatures.insert(spawn_id, body);
+		}
+	}
+
 	fn update_loaded_areas(&mut self) {
 		for player in self.players.values_mut() {
 			player.new_area = None;
@@ -249,6 +268,7 @@ impl World {
 		self.time.increment();
 		self.update_creatures();
 		self.update_loaded_areas();
+		self.spawn_creatures();
 	}
 	
 	
@@ -263,8 +283,8 @@ impl World {
 	pub fn view(&self) -> HashMap<PlayerId, WorldMessage> {
 		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
-		let dynamics: HashMap<CreatureId, CreatureView> = self.players.values()
-			.filter_map(|player| Some((player.body, self.creatures.get(&player.body)?.view())))
+		let dynamics: HashMap<CreatureId, CreatureView> = self.creatures.iter()
+			.map(|(id, creature)| (*id, creature.view()))
 			.collect();
 		for (playerid, player) in self.players.iter() {
 			let mut wm = WorldMessage::new(self.time);

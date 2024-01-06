@@ -8,7 +8,8 @@ use crate::{
 	random::{WhiteNoise, randomize_u32, pick, pick_weighted},
 	randomtick,
 	util::math,
-	heightmap::{HeightMap, LazyHeightMap}
+	heightmap::{HeightMap, LazyHeightMap},
+	creature::Npc,
 };
 
 macro_rules! t {
@@ -281,7 +282,8 @@ impl InfiniteMap {
 					*pick_weighted(rind, &[
 						(t!(Grass1), 50),
 						(t!(Grass2), 50),
-						(t!(Grass3), 50),
+						(t!(Grass3), 48),
+						(t!(Ground::Grass1, Structure::Spawn(Npc::Frog)), 2),
 						(t!(Grass1, Shrub), 1),
 						(t!(Grass1, Rush), 10),
 						(*pick(

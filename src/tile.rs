@@ -9,6 +9,7 @@ use crate::{
 	worldmessages::SoundType,
 	hashmap,
 	crop::Crop,
+	creature::Npc,
 };
 
 
@@ -94,6 +95,7 @@ pub enum Ground {
 #[func(fn craft(&self) -> Option<CraftType>)]
 #[func(fn grow(&self) -> Option<(i64, Structure, Option<Structure>)>)]
 #[func(fn join(&self, other: Structure) -> Option<Structure>)]
+#[func(fn spawn(&self) -> Option<Npc>)]
 pub enum Structure {
 	#[assoc(is_open = true)]
 	Air,
@@ -327,6 +329,9 @@ pub enum Structure {
 	#[assoc(grow = _0.grow()?)]
 	#[assoc(join = _0.join(other)?)]
 	Crop(Crop),
+
+	#[assoc(spawn = *_0)]
+	Spawn(Npc)
 }
 
 
@@ -463,6 +468,10 @@ impl Tile {
 	
 	pub fn grow(&self) -> Option<(i64, Structure, Option<Structure>)> {
 		self.structure.grow()
+	}
+
+	pub fn spawn(&self) -> Option<Npc> {
+		self.structure.spawn()
 	}
 }
 

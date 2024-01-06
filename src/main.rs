@@ -1,3 +1,4 @@
+#![allow(clippy::expect_fun_call)]
 use std::thread;
 use std::time::{Instant, Duration};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
@@ -50,7 +51,7 @@ use self::{
 };
 
 
-
+#[allow(clippy::expect_fun_call)]
 fn main(){
 	
 	let config = Config::parse();
