@@ -197,8 +197,8 @@ impl GameServer {
 		let id = clientid;
 		match msg {
 			ClientMessage::Introduction(name) => {
-				if name.len() > 60 {
-					return Err(merr!(name, "A name can not be longer than 60 bytes"));
+				if name.as_bytes().len() > 15 {
+					return Err(merr!(name, "A name can not be longer than 15 bytes"));
 				}
 				if name.is_empty() {
 					return Err(merr!(name, "A name must have at least one character"));

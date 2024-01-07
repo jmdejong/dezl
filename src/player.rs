@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::{
 	controls::Control,
-	creature::CreatureId
+	creature::Creature
 };
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
@@ -19,13 +19,13 @@ impl fmt::Display for PlayerId {
 #[derive(Debug, Clone)]
 pub struct Player {
 	pub plan: Option<Control>,
-	pub body: CreatureId,
+	pub body: Creature
 }
 
 
 impl Player {
 
-	pub fn new(body: CreatureId) -> Self {
+	pub fn new(body: Creature) -> Self {
 		Self {
 			plan: None,
 			body,

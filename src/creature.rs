@@ -1,12 +1,11 @@
 
 
-use serde::{Serialize, Deserialize};
+use serde::{Serialize, Deserialize, Serializer};
 use crate::{
 	sprite::Sprite,
 	Pos,
 	PlayerId,
 	timestamp::Duration,
-	util::HolderId,
 	inventory::{Inventory, InventorySave},
 	worldmessages::SoundType,
 	timestamp::Timestamp,
@@ -111,15 +110,22 @@ impl Creature {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct CreatureId(pub usize);
 
-impl HolderId for CreatureId {
-	fn next(&self) -> Self { Self(self.0 + 1) }
-	fn initial() -> Self { Self(1) }
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CreatureId {
+	Player(PlayerId),
+	Spawned(SpawnId),
 }
 
-
+impl Serialize for CreatureId {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where S: Serializer {
+		match self {
+			Self::Player(PlayerId(name)) => format!("p-{}", name),
+			Self::Spawned(SpawnId(Pos{x, y})) => format!("s-{},{}", x, y),
+		}.serialize(serializer)
+	}
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerSave {

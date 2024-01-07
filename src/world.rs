@@ -7,7 +7,6 @@ use crate::{
 	config::MapDef,
 	controls::{Control},
 	pos::{Pos, Direction},
-	util::Holder,
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
 	creature::{Creature, Mind, CreatureId, PlayerSave, CreatureView, SpawnId},
@@ -23,14 +22,15 @@ pub struct World {
 	pub time: Timestamp,
 	ground: Map,
 	players: HashMap<PlayerId, Player>,
-	creatures: Holder<CreatureId, Creature>,
-	spawned_creatures: HashMap<SpawnId, CreatureId>,
+	// creatures: Holder<CreatureId, Creature>,
+	spawned_creatures: HashMap<SpawnId, Creature>,
 	claims: HashMap<PlayerId, Pos>,
 	mapdef: MapDef,
 	loaded_areas: LoadedAreas,
 }
 
 impl World {
+
 	
 	pub fn new(name: String, basemap: BaseMapImpl, mapdef: MapDef) -> Self {
 		let time = Timestamp(0);
@@ -38,7 +38,7 @@ impl World {
 			name,
 			ground: Map::new(basemap, time),
 			players: HashMap::new(),
-			creatures: Holder::new(),
+			// creatures: Holder::new(),
 			time,
 			claims: HashMap::new(),
 			spawned_creatures: HashMap::new(),
@@ -55,7 +55,7 @@ impl World {
 		if self.players.contains_key(playerid){
 			return Err(PlayerError::AlreadyExists(playerid.clone()));
 		}
-		let body = self.creatures.insert(Creature::load_player(playerid.clone(), saved));
+		let body = Creature::load_player(playerid.clone(), saved);
 		self.players.insert(
 			playerid.clone(),
 			Player::new(body)
@@ -64,15 +64,14 @@ impl World {
 	}
 	
 	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerError> {
-		let player = self.players.remove(playerid).ok_or_else(|| PlayerError::NotFound(playerid.clone()))?;
-		self.creatures.remove(&player.body);
+		self.players.remove(playerid)
+			.ok_or_else(|| PlayerError::NotFound(playerid.clone()))?;
 		Ok(())
 	}
 	
 	pub fn save_player(&self, playerid: &PlayerId) -> Result<PlayerSave, PlayerError> {
 		let player = self.players.get(playerid).ok_or_else(|| PlayerError::NotFound(playerid.clone()))?;
-		let body = self.creatures.get(&player.body).ok_or_else(|| PlayerError::BodyNotFound(playerid.clone()))?;
-		Ok(body.save())
+		Ok(player.body.save())
 	}
 	
 	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), PlayerError> {
@@ -106,19 +105,35 @@ impl World {
 			}
 		}
 	}
+
+	fn all_creatures(&self) -> impl Iterator<Item=(CreatureId, &Creature)> {
+		self.players.iter()
+			.map(|(player_id, player)| (CreatureId::Player(player_id.clone()), &player.body))
+			.chain(
+				self.spawned_creatures.iter()
+					.map(|(spawn_id, creature)| (CreatureId::Spawned(*spawn_id), creature))
+			 )
+	}
 	
 	fn update_creatures(&mut self) -> Option<()> {
-		let mut creature_map: HashMap<Pos, CreatureId> = self.creatures.iter()
-			.map(|(creatureid, creature)| (creature.pos, *creatureid))
+		let mut creature_map: HashMap<Pos, CreatureId> = self.all_creatures()
+			.map(|(creatureid, creature)| (creature.pos, creatureid.clone()))
 			.collect();
-		let plans: HashMap<CreatureId, Control> = self.creatures.iter()
+		let plans: HashMap<CreatureId, Control> = self.all_creatures()
 			.filter(|(_k, c)| c.can_move(self.time))
 			.filter_map(|(k, c)|
-				Some((*k, self.creature_plan(c)?))
+				Some((k.clone(), self.creature_plan(c)?))
 			).collect();
-		for (id, creature) in self.creatures.iter_mut() {
+		for (id, creature) in
+			self.players.iter_mut()
+				.map(|(player_id, player)| (CreatureId::Player(player_id.clone()), &mut player.body))
+				.chain(
+					self.spawned_creatures.iter_mut()
+						.map(|(spawn_id, creature)| (CreatureId::Spawned(*spawn_id), creature))
+				 )
+						{
 			creature.heard_sounds = Vec::new();
-			let Some(plan) = plans.get(id) 
+			let Some(plan) = plans.get(&id)
 				else {
 					continue 
 				};
@@ -127,10 +142,10 @@ impl World {
 					let newpos = creature.pos + *direction;
 					let tile = self.ground.cell(newpos);
 					if !tile.blocking() && !creature_map.contains_key(&newpos) {
-						if creature_map.get(&creature.pos) == Some(id){
+						if creature_map.get(&creature.pos) == Some(&id){
 							creature_map.remove(&creature.pos);
 						}
-						creature_map.insert(newpos, *id);
+						creature_map.insert(newpos, id.clone());
 						creature.move_to(newpos, self.time);
 					}
 				}
@@ -138,10 +153,10 @@ impl World {
 					let newpos = creature.pos + *direction;
 					let tile = self.ground.cell(newpos);
 					if !tile.blocking() && !creature_map.contains_key(&newpos) {
-						if creature_map.get(&creature.pos) == Some(id){
+						if creature_map.get(&creature.pos) == Some(&id){
 							creature_map.remove(&creature.pos);
 						}
-						creature_map.insert(newpos, *id);
+						creature_map.insert(newpos, id.clone());
 						creature.move_to(newpos, self.time);
 					}
 				}
@@ -233,7 +248,7 @@ impl World {
 
 	fn update_loaded_areas(&mut self) {
 		let player_positions: Vec<(PlayerId, Pos)> = self.players.iter()
-			.filter_map(|(player_id, player)| Some((player_id.clone(), self.creatures.get(&player.body)?.pos)))
+			.map(|(player_id, player)| (player_id.clone(), player.body.pos))//Some((player_id.clone(), self.creatures.get(&player.body)?.pos)))
 			.collect();
 		self.loaded_areas.update(&player_positions);
 		for fresh_area in self.loaded_areas.all_fresh() {
@@ -248,19 +263,19 @@ impl World {
 				continue;
 			}
 			// println!("spawning {:?} npc at {:?}", npc, spawn_id);
-			let body = self.creatures.insert(Creature::spawn_npc(spawn_id, npc));
+			let body = Creature::spawn_npc(spawn_id, npc);
 			self.spawned_creatures.insert(spawn_id, body);
 		}
-		self.spawned_creatures.retain(|_spawn_id, body_id| {
-			let pos = self.creatures.get(body_id).unwrap().pos;
-			if !self.loaded_areas.is_loaded(pos) {
-				// println!("despawning npc {:?} from {:?}", _spawn_id, pos);
-				self.creatures.remove(body_id);
-				false
-			} else {
-				true
-			}
-		})
+		self.spawned_creatures.retain(|_spawn_id, body| self.loaded_areas.is_loaded(body.pos));
+			// let pos = self.creatures.get(body_id).unwrap().pos;
+			// if !self.loaded_areas.is_loaded(pos) {
+			// 	// println!("despawning npc {:?} from {:?}", _spawn_id, pos);
+			// 	self.creatures.remove(body_id);
+			// 	false
+			// } else {
+			// 	true
+			// }
+		// })
 	}
 	
 	pub fn update(&mut self) {
@@ -283,12 +298,13 @@ impl World {
 	pub fn view(&self) -> HashMap<PlayerId, WorldMessage> {
 		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
-		let dynamics: HashMap<CreatureId, CreatureView> = self.creatures.iter()
-			.map(|(id, creature)| (*id, creature.view()))
+		let dynamics: HashMap<CreatureId, CreatureView> = self.all_creatures()
+			.map(|(id, creature)| (id.clone(), creature.view()))
 			.collect();
 		for (id, player) in self.players.iter() {
 			let mut wm = WorldMessage::new(self.time);
-			if let Some(body) = self.creatures.get(&player.body) {
+			let body = &player.body;
+			// if let Some(body) = self.creatures.get(&player.body) {
 				wm.viewarea = self.loaded_areas.loaded(id).map(|area| ViewAreaMessage{area});
 				wm.section = self.loaded_areas.fresh(id).map(|area| self.ground.view(area));
 				if changes.is_some() {
@@ -299,7 +315,7 @@ impl World {
 				wm.inventory = Some(body.inventory.view());
 				wm.sounds = body.heard_sounds.clone();
 
-			}
+			// }
 			views.insert(id.clone(), wm);
 		}
 		views
@@ -320,10 +336,10 @@ impl World {
 			name: save.name,
 			ground: Map::load(save.ground, save.time, basemap),
 			players: HashMap::new(),
-			creatures: Holder::new(),
 			spawned_creatures: HashMap::new(),
 			time: save.time,
 			claims: save.claims,
+			// creatures: Holder::new(),
 			mapdef: save.mapdef,
 			loaded_areas: LoadedAreas::new(),
 		}
@@ -334,7 +350,6 @@ impl World {
 #[derive(Debug)]
 pub enum PlayerError {
 	NotFound(PlayerId),
-	BodyNotFound(PlayerId),
 	AlreadyExists(PlayerId)
 }
 

@@ -52,6 +52,7 @@ impl <K: HolderId, V> Holder<K, V> {
 		self.storage.remove(key)
 	}
 	
+	#[allow(dead_code)]
 	#[inline]
 	pub fn iter(&self) -> Iter<K, V> {
 		self.storage.iter()
