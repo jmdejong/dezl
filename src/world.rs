@@ -133,7 +133,7 @@ impl World {
 							continue
 						};
 					if interaction.claim {
-						if let Some(player_id) = creature.player() {
+						if let Some(player_id) = id.player() {
 							if self.claims.contains_key(&player_id) {
 								creature.heard_sounds.push((BuildError, "Only one claim per player allowed".to_string()));
 								continue;
@@ -146,7 +146,7 @@ impl World {
 								creature.heard_sounds.push((BuildError, "Too close to spawn".to_string()));
 								continue;
 							}
-							self.claims.insert(player_id, pos);
+							self.claims.insert(player_id.clone(), pos);
 						} else {
 							creature.heard_sounds.push((
 								BuildError,
@@ -156,7 +156,7 @@ impl World {
 						}
 					}
 					if interaction.build {
-						if let Some(claim_pos) = creature.player().as_ref().and_then(|player_id| self.claims.get(player_id)) {
+						if let Some(claim_pos) = id.player().and_then(|player_id| self.claims.get(player_id)) {
 							if pos.distance_to(*claim_pos) > 24 {
 								creature.heard_sounds.push((
 									BuildError,

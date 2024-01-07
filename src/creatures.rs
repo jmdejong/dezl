@@ -18,6 +18,14 @@ pub enum CreatureId {
 }
 
 impl CreatureId {
+	pub fn player(&self) -> Option<&PlayerId> {
+		if let Self::Player(id) = self {
+			Some(id)
+		} else {
+			None
+		}
+	}
+
 	pub fn seed(&self) -> u32 {
 		match self {
 			Self::Player(PlayerId(name)) => random::randomize_str(name),
@@ -55,7 +63,7 @@ impl Creatures {
 		if self.players.contains_key(playerid){
 			return Err(PlayerAlreadyExists(playerid.clone()));
 		}
-		let body = Creature::load_player(playerid.clone(), saved);
+		let body = Creature::load_player(saved);
 		self.players.insert(
 			playerid.clone(),
 			Player::new(body)
@@ -88,9 +96,6 @@ impl Creatures {
 	pub fn control_creature(&mut self, id: &CreatureId, control: Option<Control>) -> Result<(), CreatureNotFound> {
 		self.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?.plan = control;
 		Ok(())
-		// if let Some(creature) = self.get_creature_mut(id) {
-			// creature.plan = control;
-		// }
 	}
 
 	pub fn reset_plans(&mut self) {

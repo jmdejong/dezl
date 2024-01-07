@@ -4,7 +4,6 @@ use serde::{Serialize, Deserialize};
 use crate::{
 	sprite::Sprite,
 	Pos,
-	PlayerId,
 	timestamp::Duration,
 	inventory::{Inventory, InventorySave},
 	worldmessages::SoundType,
@@ -12,15 +11,8 @@ use crate::{
 	controls::Control,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Mind {
-	Player(PlayerId),
-	Spawned(SpawnId),
-}
-
 #[derive(Debug, Clone)]
 pub struct Creature {
-	pub mind: Mind,
 	pub pos: Pos,
 	walk_cooldown: Duration,
 	sprite: Sprite,
@@ -33,17 +25,8 @@ pub struct Creature {
 
 impl Creature {
 	
-	pub fn player(&self) -> Option<PlayerId> {
-		match &self.mind {
-			Mind::Player(id) => Some(id.clone()),
-			Mind::Spawned(_) => None,
-		}
-	}
-	
-	
-	pub fn load_player(playerid: PlayerId, saved: PlayerSave) -> Self {
+	pub fn load_player(saved: PlayerSave) -> Self {
 		Self {
-			mind: Mind::Player(playerid),
 			pos: saved.pos,
 			walk_cooldown: Duration(2),
 			sprite: Sprite::PlayerDefault,
@@ -57,7 +40,6 @@ impl Creature {
 
 	pub fn spawn_npc(spawn_id: SpawnId, _npc: Npc) -> Self {
 		Self {
-			mind: Mind::Spawned(spawn_id),
 			pos: spawn_id.0,
 			walk_cooldown: Duration(3),
 			sprite: Sprite::Frog,
