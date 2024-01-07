@@ -143,7 +143,7 @@ impl <T: Read+Write>Connection<T> for WebSocketConnection<T> {
 	}
 	
 	fn send(&mut self, text: &str) -> Result<(), ConnectionError> {
-		self.websocket.write(Message::Text(text.to_string()))
+		self.websocket.send(Message::Text(text.to_string()))
 			.map_err(ConnectionError::Tungstenite)
 	}
 }
