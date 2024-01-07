@@ -10,7 +10,7 @@ use crate::{
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
 	creature::{PlayerSave, CreatureView},
-	creatures::{Creatures, CreatureId, PlayerError},
+	creatures::{Creatures, CreatureId, PlayerNotFound, PlayerAlreadyExists, CreatureNotFound},
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
 	loadedareas::LoadedAreas,
@@ -47,11 +47,11 @@ impl World {
 		PlayerSave::new(self.ground.player_spawn())
 	}
 	
-	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerError> {
+	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerAlreadyExists> {
 		self.creatures.add_player(playerid, saved)
 	}
 	
-	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerError> {
+	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerNotFound> {
 		self.creatures.remove_player(playerid)
 	}
 	
@@ -59,7 +59,7 @@ impl World {
 		self.creatures.save_player(playerid)
 	}
 	
-	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), PlayerError> {
+	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), CreatureNotFound> {
 		self.creatures.control_player(playerid, control)
 	}
 	
@@ -79,7 +79,7 @@ impl World {
 				} else {
 					None
 				};
-			self.creatures.control_creature(&npc, control)
+			let _ = self.creatures.control_creature(&npc, control);
 		}
 		let creatures: Vec<CreatureId> = self.creatures.all().map(|(id, _)| id).collect();
 

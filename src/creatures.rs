@@ -51,9 +51,9 @@ impl Creatures {
 		}
 	}
 
-	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerError> {
+	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerAlreadyExists> {
 		if self.players.contains_key(playerid){
-			return Err(PlayerError::AlreadyExists(playerid.clone()));
+			return Err(PlayerAlreadyExists(playerid.clone()));
 		}
 		let body = Creature::load_player(playerid.clone(), saved);
 		self.players.insert(
@@ -63,9 +63,9 @@ impl Creatures {
 		Ok(())
 	}
 
-	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerError> {
+	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerNotFound> {
 		self.players.remove(playerid)
-			.ok_or_else(|| PlayerError::NotFound(playerid.clone()))?;
+			.ok_or_else(|| PlayerNotFound(playerid.clone()))?;
 		Ok(())
 	}
 
@@ -77,19 +77,20 @@ impl Creatures {
 		self.players.keys().cloned().collect()
 	}
 
-	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), PlayerError> {
-		self.control_creature(&CreatureId::Player(playerid.clone()), Some(control));
-		Ok(())
+	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), CreatureNotFound> {
+		self.control_creature(&CreatureId::Player(playerid.clone()), Some(control))
 	}
 
 	pub fn npcs(&self) -> Vec<CreatureId> {
 		self.spawned_creatures.keys().map(|spawn_id| CreatureId::Spawned(*spawn_id)).collect()
 	}
 
-	pub fn control_creature(&mut self, id: &CreatureId, control: Option<Control>) {
-		if let Some(creature) = self.get_creature_mut(id) {
-			creature.plan = control;
-		}
+	pub fn control_creature(&mut self, id: &CreatureId, control: Option<Control>) -> Result<(), CreatureNotFound> {
+		self.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?.plan = control;
+		Ok(())
+		// if let Some(creature) = self.get_creature_mut(id) {
+			// creature.plan = control;
+		// }
 	}
 
 	pub fn reset_plans(&mut self) {
@@ -156,7 +157,8 @@ impl Player {
 }
 
 #[derive(Debug)]
-pub enum PlayerError {
-	NotFound(PlayerId),
-	AlreadyExists(PlayerId)
-}
+pub struct PlayerNotFound(pub PlayerId);
+#[derive(Debug)]
+pub struct PlayerAlreadyExists(pub PlayerId);
+#[derive(Debug)]
+pub struct CreatureNotFound(pub CreatureId);
