@@ -7,7 +7,8 @@ use crate::{
 	Sprite,
 	PlayerId,
 	timestamp::Timestamp,
-	creature::{CreatureView, CreatureId, Movement},
+	creature::{CreatureView, Movement},
+	creatures::CreatureId,
 	map::SectionView,
 };
 

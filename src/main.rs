@@ -11,6 +11,7 @@ mod basemap;
 mod config;
 mod controls;
 mod creature;
+mod creatures;
 mod crop;
 mod errors;
 mod gameserver;
@@ -147,8 +148,8 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 					gameserver.send_or_log(&player, ServerMessage::Welcome(WelcomeMsg{tick_millis: config.step_duration}));
 				}
 				Action::Leave(player) => {
-					if world.has_player(&player) {
-						persistence.save_player(&player, world.save_player(&player).unwrap()).unwrap();
+					if let Some(saved) = world.save_player(&player) {
+						persistence.save_player(&player, saved).unwrap();
 						if let Err(err) = world.remove_player(&player) {
 							eprintln!("Error: can not remove player {:?}: {:?}", player, err);
 						}

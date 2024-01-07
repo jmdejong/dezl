@@ -20,6 +20,15 @@ pub fn randomize_pos(pos: Pos) -> u32 {
 	randomize_u32(pos.x as u32 ^ randomize_u32(pos.y as u32))
 }
 
+pub fn randomize_str(s: &str) -> u32 {
+	let mut seed: u32 = 3829;
+	for byte in s.bytes() {
+		seed *= 31;
+		seed += byte as u32;
+	}
+	seed
+}
+
 pub fn pick<T>(seed: u32, choices: &[T]) -> &T {
 	&choices[seed as usize % choices.len()]
 }

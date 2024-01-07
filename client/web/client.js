@@ -127,6 +127,7 @@ class Client {
 
 	handleMessage(msg) {
 		let data = JSON.parse(msg.data)
+		console.log(data);
 		let type = data[0];
 		if (type === "message") {
 			this.print(data[1]);

@@ -40,7 +40,6 @@ impl Server for UnixServer {
 	fn accept_pending_connections(&mut self) -> Vec<ConnectionId> {
 		let mut new_connections = Vec::new();
 		while let Ok((stream, _address)) = self.listener.accept() {
-			println!("new connection omg!!! {:?}", _address);
 			let con = StreamConnection::new(stream).unwrap();
 			let id = self.connections.insert(con);
 			new_connections.push(id);

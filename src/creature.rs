@@ -1,6 +1,6 @@
 
 
-use serde::{Serialize, Deserialize, Serializer};
+use serde::{Serialize, Deserialize};
 use crate::{
 	sprite::Sprite,
 	Pos,
@@ -9,6 +9,7 @@ use crate::{
 	inventory::{Inventory, InventorySave},
 	worldmessages::SoundType,
 	timestamp::Timestamp,
+	controls::Control,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +28,7 @@ pub struct Creature {
 	pub heard_sounds: Vec<(SoundType, String)>,
 	is_dead: bool,
 	movement: Option<Movement>,
+	pub plan: Option<Control>,
 }
 
 impl Creature {
@@ -49,6 +51,7 @@ impl Creature {
 			heard_sounds: Vec::new(),
 			is_dead: false,
 			movement: None,
+			plan: None,
 		}
 	}
 
@@ -62,6 +65,7 @@ impl Creature {
 			heard_sounds: Vec::new(),
 			is_dead: false,
 			movement: None,
+			plan: None,
 		}
 	}
 	
@@ -107,23 +111,6 @@ impl Creature {
 		} else {
 			true
 		}
-	}
-}
-
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum CreatureId {
-	Player(PlayerId),
-	Spawned(SpawnId),
-}
-
-impl Serialize for CreatureId {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-	where S: Serializer {
-		match self {
-			Self::Player(PlayerId(name)) => format!("p-{}", name),
-			Self::Spawned(SpawnId(Pos{x, y})) => format!("s-{},{}", x, y),
-		}.serialize(serializer)
 	}
 }
 

@@ -11,6 +11,7 @@ const DESPAWN_OFFSET: i32 = 32;
 const VIEW_AREA_SIZE: Pos = Pos::new(128, 128);
 
 
+#[derive(Debug)]
 pub struct LoadedAreas {
 	loaded: HashMap<PlayerId, Area>,
 	fresh: HashMap<PlayerId, Area>
