@@ -25,9 +25,9 @@ impl LoadedAreas {
 		}
 	}
 
-	pub fn update(&mut self, player_positions: &[(PlayerId, Pos)]) {
+	pub fn update(&mut self, player_positions: &HashMap<PlayerId, Pos>) {
 		self.fresh = HashMap::new();
-		for (player_id, pos) in player_positions {
+		for (player_id, pos) in player_positions.iter() {
 			let old_area = self.loaded.get(player_id);
 			let in_view_range = old_area
 					.map(|area| area.grow(-EDGE_OFFSET).contains(*pos))
@@ -38,6 +38,7 @@ impl LoadedAreas {
 				self.fresh.insert(player_id.clone(), new_area);
 			}
 		}
+		self.loaded.retain(|player_id, _| player_positions.contains_key(player_id));
 	}
 
 	pub fn all_loaded(&self) -> Vec<Area> {

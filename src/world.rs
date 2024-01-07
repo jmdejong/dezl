@@ -196,7 +196,7 @@ impl World {
 	}
 
 	fn update_loaded_areas(&mut self) {
-		let player_positions: Vec<(PlayerId, Pos)> = self.creatures.players.iter()
+		let player_positions: HashMap<PlayerId, Pos> = self.creatures.players.iter()
 			.map(|(player_id, player)| (player_id.clone(), player.body.pos))
 			.collect();
 		self.loaded_areas.update(&player_positions);
