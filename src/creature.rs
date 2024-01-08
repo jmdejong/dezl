@@ -41,7 +41,7 @@ impl Creature {
 	pub fn spawn_npc(spawn_id: SpawnId, _npc: Npc) -> Self {
 		Self {
 			pos: spawn_id.0,
-			walk_cooldown: Duration(3),
+			walk_cooldown: Duration(5),
 			sprite: Sprite::Frog,
 			inventory: Inventory::load(Vec::new()),
 			heard_sounds: Vec::new(),

@@ -31,7 +31,6 @@ pub struct WorldMessage {
 	pub section: Option<SectionView>,
 	#[serde(skip_serializing_if = "Option::is_none")]
 	pub dynamics: Option<DynamicMessage>,
-
 }
 
 
@@ -114,6 +113,4 @@ impl MessageCache {
 		self.cache.remove(player);
 	}
 }
-
-
 
