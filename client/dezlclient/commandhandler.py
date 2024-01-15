@@ -32,7 +32,7 @@ class CommandHandler:
 			"ijson": self.ijson,
 			"ij": self.ijson,
 			"hy": self.hy,
-			"interact": lambda direction: self.input({"interact": direction}),
+			"interact": lambda direction: self.input({"use": [self.client.selected, direction]}),
 			"select": lambda selector: self.input({"select": selector}),
 			"moveselected": lambda selector: self.input({"moveselected": selector}),
 			"where": lambda _: self.log("current location: {}".format(self.client.playerPos)),

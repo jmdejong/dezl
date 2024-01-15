@@ -125,6 +125,13 @@ impl Creatures {
 			 )
 	}
 
+	pub fn get_creature(&mut self, id: &CreatureId) -> Option<&Creature>{
+		match id {
+			CreatureId::Player(player_id) => self.players.get(player_id).map(|player| &player.body),
+			CreatureId::Spawned(spawn_id) => self.spawned_creatures.get(spawn_id),
+		}
+	}
+
 	pub fn get_creature_mut(&mut self, id: &CreatureId) -> Option<&mut Creature>{
 		match id {
 			CreatureId::Player(player_id) => self.players.get_mut(player_id).map(|player| &mut player.body),

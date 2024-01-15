@@ -24,6 +24,7 @@ class Client:
 		self.closeMessage = None
 		self.helpVisible = False
 		self.playerPos = None
+		self.selected = 0
 		
 		self.inputHandler = InputHandler(self, keybindings.actions)
 		
@@ -139,7 +140,8 @@ class Client:
 		inventory = m.get("inventory")
 		if inventory:
 			items, selected = inventory
-			self.display.setInventory(items, selected)
+			self.selected = selected
+			self.display.setInventory(items, self.selected)
 
 		sounds = m.get("sounds")
 		if sounds:

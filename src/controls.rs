@@ -15,6 +15,7 @@ pub enum Control {
 	Stop,
 	Suicide,
 	Interact(Option<Direction>),
+	Use(usize, Option<Direction>),
 	Select(Selector),
 	MoveSelected(Selector),
 }

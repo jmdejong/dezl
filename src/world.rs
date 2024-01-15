@@ -14,6 +14,7 @@ use crate::{
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
 	loadedareas::LoadedAreas,
+	item::Item,
 	random,
 };
 
@@ -84,115 +85,128 @@ impl World {
 		let creatures: Vec<CreatureId> = self.creatures.all().map(|(id, _)| id).collect();
 
 		for id in creatures {
-			let Some(creature) = self.creatures.get_creature_mut(&id)
-				else { continue };
-			if !creature.can_move(self.time) {
-				continue;
-			}
-			creature.heard_sounds = Vec::new();
-			let Some(plan) = &creature.plan
-				else { continue };
+			let plan = {
+				let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
+				if !creature.can_move(self.time) {
+					continue;
+				}
+				creature.heard_sounds = Vec::new();
+				let Some(plan) = &creature.plan
+					else { continue };
+				plan.clone()
+			};
 			match plan {
 				Control::Move(direction) => {
-					let newpos = creature.pos + *direction;
-					let tile = self.ground.cell(newpos);
-					if !tile.blocking() && !creature_map.contains_key(&newpos) {
-						if creature_map.get(&creature.pos) == Some(&id){
-							creature_map.remove(&creature.pos);
-						}
-						creature_map.insert(newpos, id.clone());
-						creature.move_to(newpos, self.time);
-					}
+					let _ = self.move_creature(&id, direction, &mut creature_map);
 				}
 				Control::Movement(direction) => {
-					let newpos = creature.pos + *direction;
-					let tile = self.ground.cell(newpos);
-					if !tile.blocking() && !creature_map.contains_key(&newpos) {
-						if creature_map.get(&creature.pos) == Some(&id){
-							creature_map.remove(&creature.pos);
-						}
-						creature_map.insert(newpos, id.clone());
-						creature.move_to(newpos, self.time);
-					}
+					let _ = self.move_creature(&id, direction, &mut creature_map);
 				}
 				Control::Suicide => {
+					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
 					creature.kill();
 				}
 				Control::Select(selector) => {
-					creature.inventory.select(*selector);
+					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
+					creature.inventory.select(selector);
 				}
 				Control::MoveSelected(selector) => {
-					creature.inventory.move_selected(*selector);
+					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
+					creature.inventory.move_selected(selector);
 				}
 				Control::Interact(direction) => {
-					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
-					let tile = self.ground.cell(pos);
-					let item = creature.inventory.selected();
-					let Some(interaction) = tile.interact(item, self.time) 
-						else {
-							continue
-						};
-					if interaction.claim {
-						if let Some(player_id) = id.player() {
-							if self.claims.contains_key(&player_id) {
-								creature.heard_sounds.push((BuildError, "Only one claim per player allowed".to_string()));
-								continue;
-							}
-							if self.claims.values().any(|p| p.distance_to(pos) < 64) {
-								creature.heard_sounds.push((BuildError, "Too close to existing claim".to_string()));
-								continue;
-							}
-							if pos.distance_to(self.ground.player_spawn()) < 96 {
-								creature.heard_sounds.push((BuildError, "Too close to spawn".to_string()));
-								continue;
-							}
-							self.claims.insert(player_id.clone(), pos);
-						} else {
-							creature.heard_sounds.push((
-								BuildError,
-								"Only players can claim land and you're not a player. If you read this something has probably gone wrong.".to_string()
-							));
-							continue;
-						}
-					}
-					if interaction.build {
-						if let Some(claim_pos) = id.player().and_then(|player_id| self.claims.get(player_id)) {
-							if pos.distance_to(*claim_pos) > 24 {
-								creature.heard_sounds.push((
-									BuildError,
-									"Too far from land claim to build".to_string()
-								));
-								continue;
-							}
-						} else {
-							creature.heard_sounds.push((
-								BuildError,
-								"Need land claim to build".to_string()
-							));
-							continue;
-						}
-					}
-					if !creature.inventory.pay(interaction.cost) {
-						continue;
-					}
-					for item in interaction.items {
-						creature.inventory.add(item);
-					}
-					if let Some(remains) = interaction.remains {
-						self.ground.set_structure(pos, remains);
-					}
-					if let Some(remains_ground) = interaction.remains_ground {
-						self.ground.set_ground(pos, remains_ground);
-					}
-					if let Some(message) = interaction.message {
-						creature.heard_sounds.push(message);
-					}
+					let item = self.creatures.get_creature(&id).unwrap().inventory.selected();
+					let _ = self.interact_creature(&id, direction, item);
+				}
+				Control::Use(index, direction) => {
+					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
+					let _ = self.interact_creature(&id, direction, item);
 				}
 				Control::Stop => {}
 			}
 		}
 		self.creatures.reset_plans();
 		Some(())
+	}
+
+	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut HashMap<Pos, CreatureId>) -> Result<(), CreatureNotFound> {
+		let creature = self.creatures.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?;
+		let newpos = creature.pos + direction;
+		let tile = self.ground.cell(newpos);
+		if !tile.blocking() && !creature_map.contains_key(&newpos) {
+			if creature_map.get(&creature.pos) == Some(id){
+				creature_map.remove(&creature.pos);
+			}
+			creature_map.insert(newpos, id.clone());
+			creature.move_to(newpos, self.time);
+		}
+		Ok(())
+	}
+
+	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) -> Result<(), CreatureNotFound> {
+		let creature = self.creatures.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?;
+		let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+		let tile = self.ground.cell(pos);
+		let Some(interaction) = tile.interact(item, self.time)
+			else {
+				return Ok(());
+			};
+		if interaction.claim {
+			if let Some(player_id) = id.player() {
+				if self.claims.contains_key(player_id) {
+					creature.heard_sounds.push((BuildError, "Only one claim per player allowed".to_string()));
+					return Ok(())
+				}
+				if self.claims.values().any(|p| p.distance_to(pos) < 64) {
+					creature.heard_sounds.push((BuildError, "Too close to existing claim".to_string()));
+					return Ok(())
+				}
+				if pos.distance_to(self.ground.player_spawn()) < 96 {
+					creature.heard_sounds.push((BuildError, "Too close to spawn".to_string()));
+					return Ok(())
+				}
+				self.claims.insert(player_id.clone(), pos);
+			} else {
+				creature.heard_sounds.push((
+					BuildError,
+					"Only players can claim land and you're not a player. If you read this something has probably gone wrong.".to_string()
+				));
+				return Ok(())
+			}
+		}
+		if interaction.build {
+			if let Some(claim_pos) = id.player().and_then(|player_id| self.claims.get(player_id)) {
+				if pos.distance_to(*claim_pos) > 24 {
+					creature.heard_sounds.push((
+						BuildError,
+						"Too far from land claim to build".to_string()
+					));
+					return Ok(())
+				}
+			} else {
+				creature.heard_sounds.push((
+					BuildError,
+					"Need land claim to build".to_string()
+				));
+				return Ok(())
+			}
+		}
+		if !creature.inventory.pay(interaction.cost) {
+			return Ok(())
+		}
+		for item in interaction.items {
+			creature.inventory.add(item);
+		}
+		if let Some(remains) = interaction.remains {
+			self.ground.set_structure(pos, remains);
+		}
+		if let Some(remains_ground) = interaction.remains_ground {
+			self.ground.set_ground(pos, remains_ground);
+		}
+		if let Some(message) = interaction.message {
+			creature.heard_sounds.push(message);
+		}
+		Ok(())
 	}
 
 	fn update_loaded_areas(&mut self) {

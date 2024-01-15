@@ -78,12 +78,16 @@ impl Inventory {
 	}
 	
 	pub fn selected(&self) -> Item {
-		if self.selector == 0 {
+		self.get_item(self.selector)
+	}
+
+	pub fn get_item(&self, index: usize) -> Item {
+		if index == 0 {
 			Item::Eyes
-		} else if self.selector == 1 {
+		} else if index == 1 {
 			Item::Hands
 		} else {
-			self.items[self.selector - FIXED_ENTRIES].0
+			self.items[index - FIXED_ENTRIES].0
 		}
 	}
 	
