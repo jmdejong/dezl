@@ -1,6 +1,11 @@
 "use strict";
 
 
+const NORTH = "north";
+const SOUTH = "south";
+const EAST = "east";
+const WEST = "west";
+
 class Client {
 	constructor(username, host, display, settings) {
 		this.username = username;
@@ -9,14 +14,14 @@ class Client {
 		this.websocket = null;
 		this.fps = 10;
 		this.keepRunning = true;
-		let sender = msg => this.send(msg);
+		this.send = msg => this.sendRaw(JSON.stringify(msg));
 		let delay = settings.delay|0;
 		if (delay) {
-			sender = msg => setTimeout((() => this.send(msg)), delay);
+			this.send = msg => setTimeout((() => this.sendRaw(JSON.stringify(msg))), delay);
 		}
-		this.control = new Control(sender);
 		this.model = new Model();
 		this.readyToDraw = false;
+		this.selected = 0;
 	}
 
 	start(){
@@ -27,36 +32,36 @@ class Client {
 			e.target.send(JSON.stringify({introduction: this.username}));
 		});
 		let keymap = {
-			KeyW: this.control.startMoving(NORTH),
-			ArrowUp: this.control.startMoving(NORTH),
-			KeyS: this.control.startMoving(SOUTH),
-			ArrowDown: this.control.startMoving(SOUTH),
-			KeyA: this.control.startMoving(WEST),
-			ArrowLeft: this.control.startMoving(WEST),
-			KeyD: this.control.startMoving(EAST),
-			ArrowRight: this.control.startMoving(EAST),
-			Period: this.control.selectNext(),
-			Comma: this.control.selectPrevious(),
-			NumpadAdd: this.control.selectNext(),
-			NumpadSubtract: this.control.selectPrevious(),
-			Equal: this.control.selectNext(),
-			Minus: this.control.selectPrevious(),
+			KeyW: () => this.startMoving(NORTH),
+			ArrowUp: () => this.startMoving(NORTH),
+			KeyS: () => this.startMoving(SOUTH),
+			ArrowDown: () => this.startMoving(SOUTH),
+			KeyA: () => this.startMoving(WEST),
+			ArrowLeft: () => this.startMoving(WEST),
+			KeyD: () => this.startMoving(EAST),
+			ArrowRight: () => this.startMoving(EAST),
+			Period: () => this.selectRel(1),
+			Comma: () => this.selectRel(-1),
+			NumpadAdd: () => this.selectRel(1),
+			NumpadSubtract: () => this.selectRel(-1),
+			Equal: () => this.selectRel(1),
+			Minus: () => this.selectRel(-1),
 		};
 		let shiftKeymap = {
-			KeyW: this.control.interact(NORTH),
-			ArrowUp: this.control.interact(NORTH),
-			KeyS: this.control.interact(SOUTH),
-			ArrowDown: this.control.interact(SOUTH),
-			KeyA: this.control.interact(WEST),
-			ArrowLeft: this.control.interact(WEST),
-			KeyD: this.control.interact(EAST),
-			ArrowRight: this.control.interact(EAST),
+			KeyW: () => this.interact(NORTH),
+			ArrowUp: () => this.interact(NORTH),
+			KeyS: () => this.interact(SOUTH),
+			ArrowDown: () => this.interact(SOUTH),
+			KeyA: () => this.interact(WEST),
+			ArrowLeft: () => this.interact(WEST),
+			KeyD: () => this.interact(EAST),
+			ArrowRight: () => this.interact(EAST),
 		}
 		document.addEventListener("keydown", e => {
 			if (document.activeElement.classList.contains("captureinput")){
 				if (e.code == "Escape") {
 					document.activeElement.blur();
-					this.control.stop();
+					this.stop();
 				}
 				return;
 			}
@@ -72,18 +77,18 @@ class Client {
 			}
 		});
 		let upKeyMap = {
-			KeyW: this.control.stopMoving(NORTH),
-			ArrowUp: this.control.stopMoving(NORTH),
-			KeyS: this.control.stopMoving(SOUTH),
-			ArrowDown: this.control.stopMoving(SOUTH),
-			KeyA: this.control.stopMoving(WEST),
-			ArrowLeft: this.control.stopMoving(WEST),
-			KeyD: this.control.stopMoving(EAST),
-			ArrowRight: this.control.stopMoving(EAST),
+			KeyW: () => this.stopMoving(NORTH),
+			ArrowUp: () => this.stopMoving(NORTH),
+			KeyS: () => this.stopMoving(SOUTH),
+			ArrowDown: () => this.stopMoving(SOUTH),
+			KeyA: () => this.stopMoving(WEST),
+			ArrowLeft: () => this.stopMoving(WEST),
+			KeyD: () => this.stopMoving(EAST),
+			ArrowRight: () => this.stopMoving(EAST),
 		}
 		document.addEventListener("keyup", e => {
 			if (document.activeElement.classList.contains("captureinput")){
-				this.control.stop();
+				stop();
 				return;
 			} else {
 				let action = upKeyMap[e.code];
@@ -93,16 +98,16 @@ class Client {
 			}
 		});
 		document.getElementById("control-up").addEventListener("click", e => {
-			this.control.moveOnce(NORTH);
+			this.moveOnce(NORTH);
 		});
 		document.getElementById("control-left").addEventListener("click", e => {
-			this.control.moveOnce(WEST);
+			this.moveOnce(WEST);
 		});
 		document.getElementById("control-right").addEventListener("click", e => {
-			this.control.moveOnce(EAST);
+			this.moveOnce(EAST);
 		});
 		document.getElementById("control-down").addEventListener("click", e => {
-			this.control.moveOnce(SOUTH);
+			this.moveOnce(SOUTH);
 		});
 		this.websocket.addEventListener("error", console.error);
 		this.websocket.addEventListener("close", e => {
@@ -123,6 +128,42 @@ class Client {
 		this.resize();
 		window.addEventListener('resize', e => this.resize());
 		this.update(0);
+	}
+
+	moveOnce(direction) {
+		this.sendInput({move: direction});
+	}
+
+	startMoving(direction) {
+		this.sendInput({movement: direction});
+		this.direction = direction;
+	}
+
+	stopMoving(direction) {
+		if (direction == this.direction) {
+			this.stop();
+		}
+	}
+
+	stop() {
+		this.direction = null;
+		this.sendInput("stop");
+	}
+
+	interact(direction) {
+		this.sendInput({use: [this.selected, direction]});
+	}
+
+	selectRel(dif) {
+		this.select((this.selected + this.inventory.length + dif) % this.inventory.length);
+	}
+
+	selectIndex(index) {
+		this.select(index);
+	}
+
+	sendInput(input) {
+		this.send({input: input});
 	}
 
 	handleMessage(msg) {
@@ -167,7 +208,8 @@ class Client {
 			document.getElementById("coordinates").textContent = `${m.playerpos.pos[0]}, ${m.playerpos.pos[1]}`;
 		}
 		if (m.inventory) {
-			this.setInventory(m.inventory[0], m.inventory[1]);
+			this.setInventory(m.inventory[0]);
+			this.select(Math.min(this.selected, this.inventory.length - 1));
 		}
 		if (m.sounds) {
 			for (let sound of m.sounds) {
@@ -176,7 +218,8 @@ class Client {
 		}
 	}
 
-	setInventory(items, selected) {
+	setInventory(items) {
+		this.inventory = items;
 		let table = document.getElementById("inventory");
 
 		let rows = table.querySelectorAll("li");
@@ -189,7 +232,7 @@ class Client {
 			let name = item[0];
 			let quantity = item[1];
 			let row = document.createElement("li");
-			row.onclick = this.control.selectIndex(i | 0);
+			row.onclick = () => this.select(i | 0);
 			row.className = "inv-row";
 
 			let nm = document.createElement("span");
@@ -204,19 +247,26 @@ class Client {
 			}
 			row.appendChild(am);
 
-			if (i === selected) {
-				// nm.className += " inv-selected";
-				// am.className += " inv-selected";
-				row.className += " inv-selected";
-			};
 			table.appendChild(row);
-			if (Math.abs(i - selected) <= 1) {
-				row.scrollIntoView();
+		}
+	}
+
+	select(index) {
+		this.selected = index;
+		let table = document.getElementById("inventory");
+		for (let i=0; i<table.children.length; ++i) {
+			let row = table.children[i];
+			row.classList.remove("inv-selected");
+			if (i == this.selected) {
+				row.classList.add("inv-selected");
+			}
+			if (Math.abs(i - this.selected) <= 1) {
+				row.scrollIntoView({behavior: "instant", block: "nearest"});
 			}
 		}
 	}
 
-	send(msg) {
+	sendRaw(msg) {
 		if (this.websocket.readyState === WebSocket.OPEN){
 			this.websocket.send(msg);
 		} else {
@@ -237,7 +287,7 @@ class Client {
 	}
 
 	onCommand(command) {
-		this.websocket.send(JSON.stringify({chat: command}));
+		this.send({chat: command});
 	}
 
 	resize() {
