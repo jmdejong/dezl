@@ -107,19 +107,9 @@ class Display:
 	def getSelectedItem(self, menu=None):
 		return self.inventory.getSelected()
 	
-	def selectItem(self, menu=None, *args, **kwargs):
-		self.inventory.select(*args, **kwargs)
-	
 	def setInventory(self, items):
-		self.inventory.setItems(items)
-	
-	def setInv(self, items):
-		self.inventory.setItems([(":" if is_equipped else " ") + item for (item, is_equipped) in items])
-	
-	def setInventory(self, items, selected):
 		itemStrs = ["{} {}".format(item, siCount(count)) for item, count in items]
 		self.inventory.setItems(itemStrs)
-		self.inventory.select(selected)
 	
 	def addMessage(self, message, msgtype=None):
 		if msgtype is not None:

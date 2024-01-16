@@ -32,7 +32,9 @@ class CommandHandler:
 			"ijson": self.ijson,
 			"ij": self.ijson,
 			"hy": self.hy,
-			"interact": lambda direction: self.input({"use": [self.client.selected, direction]}),
+			"interact": lambda direction: self.input({"use": [self.client.display.inventory.selector, direction]}),
+			"selectrel": self.selectRel,
+			"selectidx": self.selectIdx,
 			"select": lambda selector: self.input({"select": selector}),
 			"moveselected": lambda selector: self.input({"moveselected": selector}),
 			"where": lambda _: self.log("current location: {}".format(self.client.playerPos)),
@@ -71,12 +73,16 @@ class CommandHandler:
 	def say(self, text):
 		self.input(["say", text])
 	
-	def pick(self, option):
-		self.input(["interact", ["none", "north", "south", "east", "west"], option])
-	
+	def selectRel(self, d):
+		inventory = self.client.display.inventory
+		inventory.select((inventory.selector + d + len(inventory.items)) % len(inventory.items))
+
+	def selectIdx(self, idx):
+		inventory = self.client.display.inventory
+		inventory.select(min(idx,  len(inventory.items) - 1))
+
 	def chat(self, text):
 		self.client.sendChat( text)
-	
 	
 	def log(self, text):
 		self.client.log(text)
