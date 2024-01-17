@@ -8,7 +8,7 @@ use crate::{
 	inventory::{Inventory, InventorySave},
 	worldmessages::SoundType,
 	timestamp::Timestamp,
-	controls::Control,
+	controls::{Control, Plan, DirectChange},
 };
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,7 @@ pub struct Creature {
 	pub heard_sounds: Vec<(SoundType, String)>,
 	is_dead: bool,
 	movement: Option<Movement>,
-	pub plan: Option<Control>,
+	pub plan: Option<Plan>,
 }
 
 impl Creature {
@@ -92,6 +92,13 @@ impl Creature {
 			time >= movement.end
 		} else {
 			true
+		}
+	}
+
+	pub fn control(&mut self, control: Control) {
+		match control {
+			Control::Plan(plan) => self.plan = Some(plan),
+			Control::Direct(DirectChange::MoveItem(from, target)) => self.inventory.move_item(from, target),
 		}
 	}
 }

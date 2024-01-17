@@ -9,15 +9,25 @@ use crate::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all="lowercase")]
-pub enum Control {
+pub enum Plan {
 	Move(Direction),
 	Movement(Direction),
 	Stop,
 	Suicide,
-	Interact(Option<Direction>),
 	Use(usize, Option<Direction>),
-	Select(Selector),
-	MoveSelected(Selector),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all="lowercase")]
+pub enum DirectChange {
+	MoveItem(usize, usize),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Control {
+	Plan(Plan),
+	Direct(DirectChange)
 }
 
 #[derive(Debug, Clone)]
@@ -27,11 +37,3 @@ pub enum Action {
 	Input(PlayerId, Control)
 }
 
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all="lowercase")]
-pub enum Selector {
-	Next,
-	Previous,
-	Idx(usize),
-}

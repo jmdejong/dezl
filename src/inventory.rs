@@ -3,15 +3,13 @@ use std::collections::HashMap;
 use crate::{
 	item::Item,
 	worldmessages::InventoryMessage,
-	controls::Selector,
 };
 
 const FIXED_ENTRIES: usize = 2;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Inventory {
-	items: Vec<(Item, usize)>,
-	selector: usize
+	items: Vec<(Item, usize)>
 }
 
 impl Inventory {
@@ -31,7 +29,7 @@ impl Inventory {
 			.chain(self.items.iter())
 			.map(|(item, count)| (item.name().to_string(), if item.quantified() { Some(*count) } else {None}))
 			.collect();
-		(view, self.selector)
+		(view, None)
 	}
 	
 	pub fn save(&self) -> InventorySave {
@@ -41,7 +39,6 @@ impl Inventory {
 	pub fn load(saved: InventorySave) -> Self {
 		Self {
 			items: saved,
-			selector: 0
 		}
 	}
 	
@@ -49,36 +46,12 @@ impl Inventory {
 		self.items.len() + FIXED_ENTRIES
 	}
 	
-	pub fn select(&mut self, selector: Selector) {
-		self.selector = match selector {
-			Selector::Next =>
-				(self.selector + 1).rem_euclid(self.count()),
-			Selector::Previous =>
-				(self.selector + self.count() - 1).rem_euclid(self.count()),
-			Selector::Idx(idx) =>
-				idx.min(self.count() - 1),
-		}
-	}
-	
-	pub fn move_selected(&mut self, selector: Selector) {
-		if self.selector < FIXED_ENTRIES {
+	pub fn move_item(&mut self, from: usize, target: usize) {
+		if from < FIXED_ENTRIES || target < FIXED_ENTRIES || from > self.count() || target > self.count() || from == target{
 			return;
 		}
-		let target = match selector {
-			Selector::Next => self.selector + 1,
-			Selector::Previous => self.selector - 1,
-			Selector::Idx(idx) => idx,
-		};
-		if target < FIXED_ENTRIES || target >= self.count() {
-			return;
-		}
-		let item = self.items.remove(self.selector - FIXED_ENTRIES);
+		let item = self.items.remove(from - FIXED_ENTRIES);
 		self.items.insert(target - FIXED_ENTRIES, item);
-		self.select(selector);
-	}
-	
-	pub fn selected(&self) -> Item {
-		self.get_item(self.selector)
 	}
 
 	pub fn get_item(&self, index: usize) -> Item {
@@ -110,7 +83,6 @@ impl Inventory {
 			} else {
 				self.items = items;
 				self.items.retain(|(_, n)| *n > 0);
-				self.selector = self.selector.min(self.count() - 1);
 				true
 			}
 		} else {
@@ -126,21 +98,23 @@ pub type InventorySave = Vec<(Item, usize)>;
 mod tests {
 	use super::*;
 	#[test]
-	fn selects_eyes() {
+	fn has_default_entries() {
 		let inv = Inventory::load(vec![]);
-		assert_eq!(inv.selected(), Item::Eyes);
+		assert_eq!(inv.get_item(0), Item::Eyes);
+		assert_eq!(inv.get_item(1), Item::Hands);
 	}
 	#[test]
-	fn selects_take_hands() {
-		let mut inv = Inventory::load(vec![]);
-		inv.select(Selector::Next);
-		assert_eq!(inv.selected(), Item::Hands);
+	fn has_item() {
+		let inv = Inventory::load(vec![(Item::Stone, 1)]);
+		assert_eq!(inv.get_item(2), Item::Stone);
 	}
 	#[test]
-	fn selects_stone() {
-		let mut inv = Inventory::load(vec![(Item::Stone, 1)]);
-		inv.select(Selector::Idx(2));
-		assert_eq!(inv.selected(), Item::Stone);
+	fn moves_item() {
+		let mut inv = Inventory::load(vec![(Item::Stone, 1), (Item::Stick, 1), (Item::Ash, 1), (Item::Log, 1), (Item::Hoe, 1)]);
+		inv.move_item(3, 5);
+		let expected = Inventory::load(vec![(Item::Stone, 1), (Item::Ash, 1), (Item::Log, 1), (Item::Stick, 1), (Item::Hoe, 1)]);
+		assert_eq!(inv, expected);
+
 	}
 }
 

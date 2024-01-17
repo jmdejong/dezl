@@ -35,8 +35,7 @@ class CommandHandler:
 			"interact": lambda direction: self.input({"use": [self.client.display.inventory.selector, direction]}),
 			"selectrel": self.selectRel,
 			"selectidx": self.selectIdx,
-			"select": lambda selector: self.input({"select": selector}),
-			"moveselected": lambda selector: self.input({"moveselected": selector}),
+			"moveselected": self.moveSelected,
 			"where": lambda _: self.log("current location: {}".format(self.client.playerPos)),
 			"help": self.toggleHelp
 		}
@@ -80,6 +79,12 @@ class CommandHandler:
 	def selectIdx(self, idx):
 		inventory = self.client.display.inventory
 		inventory.select(min(idx,  len(inventory.items) - 1))
+
+	def moveSelected(self, d):
+		inventory = self.client.display.inventory
+		target = (inventory.selector + d + len(inventory.items)) % len(inventory.items)
+		self.input({"moveitem": [inventory.selector, target]})
+		inventory.selector = target
 
 	def chat(self, text):
 		self.client.sendChat( text)

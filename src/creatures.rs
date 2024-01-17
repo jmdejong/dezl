@@ -4,7 +4,7 @@ use serde::{Serialize, Serializer};
 
 use crate::{
 	PlayerId,
-	controls::{Control},
+	controls::{Control, Plan},
 	pos::Pos,
 	creature::{Creature, PlayerSave, SpawnId, Npc},
 	loadedareas::LoadedAreas,
@@ -86,21 +86,21 @@ impl Creatures {
 	}
 
 	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), CreatureNotFound> {
-		self.control_creature(&CreatureId::Player(playerid.clone()), Some(control))
+		self.control_creature(&CreatureId::Player(playerid.clone()), control)
 	}
 
 	pub fn npcs(&self) -> Vec<CreatureId> {
 		self.spawned_creatures.keys().map(|spawn_id| CreatureId::Spawned(*spawn_id)).collect()
 	}
 
-	pub fn control_creature(&mut self, id: &CreatureId, control: Option<Control>) -> Result<(), CreatureNotFound> {
-		self.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?.plan = control;
+	pub fn control_creature(&mut self, id: &CreatureId, control: Control) -> Result<(), CreatureNotFound> {
+		self.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?.control(control);
 		Ok(())
 	}
 
 	pub fn reset_plans(&mut self) {
 		for (_id, creature) in self.all_mut() {
-			if let Some(Control::Movement(_)) = creature.plan {
+			if let Some(Plan::Movement(_)) = creature.plan {
 			} else {
 				creature.plan = None;
 			}

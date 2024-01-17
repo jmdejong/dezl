@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use crate::{
 	PlayerId,
 	config::MapDef,
-	controls::{Control},
+	controls::{Plan, Control},
 	pos::{Pos, Direction},
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
 	timestamp::{Timestamp},
@@ -75,12 +75,11 @@ impl World {
 			.collect();
 		for npc in self.creatures.npcs() {
 			let rind = random::randomize_u32(npc.seed() + self.time.0 as u32);
-			let control = if random::randomize_u32(rind + 543) % 10 == 0 {
-					Some(Control::Move(*random::pick(random::randomize_u32(rind + 385), &[Direction::North, Direction::South, Direction::East, Direction::West])))
-				} else {
-					None
-				};
-			let _ = self.creatures.control_creature(&npc, control);
+			if random::randomize_u32(rind + 543) % 10 == 0 {
+				let direction = *random::pick(random::randomize_u32(rind + 385), &[Direction::North, Direction::South, Direction::East, Direction::West]);
+				let control = Plan::Move(direction);
+				let _ = self.creatures.control_creature(&npc, Control::Plan(control));
+			}
 		}
 		let creatures: Vec<CreatureId> = self.creatures.all().map(|(id, _)| id).collect();
 
@@ -96,33 +95,21 @@ impl World {
 				plan.clone()
 			};
 			match plan {
-				Control::Move(direction) => {
+				Plan::Move(direction) => {
 					let _ = self.move_creature(&id, direction, &mut creature_map);
 				}
-				Control::Movement(direction) => {
+				Plan::Movement(direction) => {
 					let _ = self.move_creature(&id, direction, &mut creature_map);
 				}
-				Control::Suicide => {
+				Plan::Suicide => {
 					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
 					creature.kill();
 				}
-				Control::Select(selector) => {
-					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
-					creature.inventory.select(selector);
-				}
-				Control::MoveSelected(selector) => {
-					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
-					creature.inventory.move_selected(selector);
-				}
-				Control::Interact(direction) => {
-					let item = self.creatures.get_creature(&id).unwrap().inventory.selected();
-					let _ = self.interact_creature(&id, direction, item);
-				}
-				Control::Use(index, direction) => {
+				Plan::Use(index, direction) => {
 					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
 					let _ = self.interact_creature(&id, direction, item);
 				}
-				Control::Stop => {}
+				Plan::Stop => {}
 			}
 		}
 		self.creatures.reset_plans();

@@ -70,7 +70,7 @@ macro_rules! worldmessages {
 worldmessages!(pos, change,  inventory, viewarea, section, dynamics);
 
 pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
-pub type InventoryMessage = (Vec<(String, Option<usize>)>, usize);
+pub type InventoryMessage = (Vec<(String, Option<usize>)>, Option<usize>);
 pub type DynamicMessage = HashMap<CreatureId, CreatureView>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]

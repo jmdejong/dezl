@@ -354,13 +354,13 @@ mod tests {
 
 	#[test]
 	fn start_pos_has_stone_floor() {
-		let mut map = InfiniteMap::new(9876);
+		let map = InfiniteMap::new(9876);
 		assert_eq!(map.cell(map.start_pos(), Timestamp(1)), t!(StoneFloor));
 	}
 
 	#[test]
 	fn generating_region_gives_same_result_as_separate_cells(){
-		let mut map = InfiniteMap::new(9876);
+		let map = InfiniteMap::new(9876);
 		let time = Timestamp(3412);
 		let mut failed = Vec::new();
 		let mut total = 0;
