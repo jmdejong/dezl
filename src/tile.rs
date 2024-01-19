@@ -382,6 +382,14 @@ impl Tile {
 	fn can_build(&self) -> bool {
 		self.structure.is_open() && self.ground.buildable()
 	}
+
+	pub fn inspect(&self) -> String {
+		format!(
+			"{}  --  {}",
+			self.ground.describe().unwrap_or(""),
+			self.structure.description().unwrap_or_default()
+		)
+	}
 	
 	pub fn interact(&self, item: Item, time: Timestamp) -> Option<InteractionResult> {
 		item.actions().into_iter().filter_map(|action| self.act(action, item, time)).next()
@@ -420,11 +428,7 @@ impl Tile {
 				Some(InteractionResult {
 					message: Some((
 						SoundType::Explain,
-						format!(
-							"{}  --  {}",
-							self.ground.describe().unwrap_or(""),
-							self.structure.description().unwrap_or_default()
-						)
+						self.inspect()
 					)),
 					..Default::default()
 				}),

@@ -7,7 +7,7 @@ use crate::{
 	config::MapDef,
 	controls::{Plan, Control},
 	pos::{Pos, Direction},
-	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage},
+	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage, SoundType},
 	timestamp::{Timestamp},
 	creature::{PlayerSave, CreatureView},
 	creatures::{Creatures, CreatureId, PlayerNotFound, PlayerAlreadyExists, CreatureNotFound},
@@ -61,7 +61,8 @@ impl World {
 	}
 	
 	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), CreatureNotFound> {
-		self.creatures.control_player(playerid, control)
+		self.creatures.get_player_mut(playerid).ok_or_else(|| CreatureNotFound(CreatureId::Player(playerid.clone())))?.control(control);
+		Ok(())
 	}
 	
 	pub fn list_players(&self) -> Vec<PlayerId> {
@@ -69,7 +70,7 @@ impl World {
 	}
 	
 	
-	fn update_creatures(&mut self) -> Option<()> {
+	fn update_creatures(&mut self) {
 		let mut creature_map: HashMap<Pos, CreatureId> = self.creatures.all()
 			.map(|(creatureid, creature)| (creature.pos, creatureid.clone()))
 			.collect();
@@ -89,7 +90,6 @@ impl World {
 				if !creature.can_move(self.time) {
 					continue;
 				}
-				creature.heard_sounds = Vec::new();
 				let Some(plan) = &creature.plan
 					else { continue };
 				plan.clone()
@@ -109,11 +109,15 @@ impl World {
 					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
 					let _ = self.interact_creature(&id, direction, item);
 				}
+				Plan::Inspect(direction) => {
+					let creature = self.creatures.get_creature_mut(&id).unwrap();
+					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+					let tile = self.ground.cell(pos);
+					creature.hear(SoundType::Explain, tile.inspect());
+				}
 				Plan::Stop => {}
 			}
 		}
-		self.creatures.reset_plans();
-		Some(())
 	}
 
 	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut HashMap<Pos, CreatureId>) -> Result<(), CreatureNotFound> {
@@ -141,40 +145,40 @@ impl World {
 		if interaction.claim {
 			if let Some(player_id) = id.player() {
 				if self.claims.contains_key(player_id) {
-					creature.heard_sounds.push((BuildError, "Only one claim per player allowed".to_string()));
+					creature.hear(BuildError, "Only one claim per player allowed".to_string());
 					return Ok(())
 				}
 				if self.claims.values().any(|p| p.distance_to(pos) < 64) {
-					creature.heard_sounds.push((BuildError, "Too close to existing claim".to_string()));
+					creature.hear(BuildError, "Too close to existing claim".to_string());
 					return Ok(())
 				}
 				if pos.distance_to(self.ground.player_spawn()) < 96 {
-					creature.heard_sounds.push((BuildError, "Too close to spawn".to_string()));
+					creature.hear(BuildError, "Too close to spawn".to_string());
 					return Ok(())
 				}
 				self.claims.insert(player_id.clone(), pos);
 			} else {
-				creature.heard_sounds.push((
+				creature.hear(
 					BuildError,
 					"Only players can claim land and you're not a player. If you read this something has probably gone wrong.".to_string()
-				));
+				);
 				return Ok(())
 			}
 		}
 		if interaction.build {
 			if let Some(claim_pos) = id.player().and_then(|player_id| self.claims.get(player_id)) {
 				if pos.distance_to(*claim_pos) > 24 {
-					creature.heard_sounds.push((
+					creature.hear(
 						BuildError,
 						"Too far from land claim to build".to_string()
-					));
+					);
 					return Ok(())
 				}
 			} else {
-				creature.heard_sounds.push((
+				creature.hear(
 					BuildError,
 					"Need land claim to build".to_string()
-				));
+				);
 				return Ok(())
 			}
 		}
@@ -190,8 +194,8 @@ impl World {
 		if let Some(remains_ground) = interaction.remains_ground {
 			self.ground.set_ground(pos, remains_ground);
 		}
-		if let Some(message) = interaction.message {
-			creature.heard_sounds.push(message);
+		if let Some((message_type, message_text)) = interaction.message {
+			creature.hear(message_type, message_text);
 		}
 		Ok(())
 	}
@@ -253,6 +257,12 @@ impl World {
 			views.insert(id.clone(), wm);
 		}
 		views
+	}
+
+	pub fn clear_step(&mut self) {
+		for (_, creature) in self.creatures.all_mut() {
+			creature.reset();
+		}
 	}
 	
 	pub fn save(&self) -> WorldSave {

@@ -101,6 +101,18 @@ impl Creature {
 			Control::Direct(DirectChange::MoveItem(from, target)) => self.inventory.move_item(from, target),
 		}
 	}
+
+	pub fn hear(&mut self, typ: SoundType, text: String) {
+		self.heard_sounds.push((typ, text))
+	}
+
+	pub fn reset(&mut self) {
+		if let Some(Plan::Movement(_)) = self.plan {
+		} else {
+			self.plan = None;
+		}
+		self.heard_sounds = Vec::new()
+	}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

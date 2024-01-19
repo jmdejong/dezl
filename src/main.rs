@@ -171,6 +171,7 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 			gameserver.send_or_log(&player, ServerMessage::World(message));
 		}
 		let send_done = Instant::now();
+		world.clear_step();
 		if world.time.0 % 100 == 1 {
 			save(&world, &persistence);
 		}

@@ -15,6 +15,7 @@ pub enum Plan {
 	Stop,
 	Suicide,
 	Use(usize, Option<Direction>),
+	Inspect(Option<Direction>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
