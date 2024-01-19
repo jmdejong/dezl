@@ -4,7 +4,6 @@
 import os
 from ratuil.textstyle import TextStyle
 from ratuil.layout import Layout
-from .listselector import ListSelector
 from ratuil.boxstyle import Value, Relativity
 
 ALPHABET = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -25,8 +24,6 @@ class Display:
 		self.layout.update()
 		
 		# temporary, until these have a better place
-		self.inventory = ListSelector(self.getWidget("inventory"))
-		self.inventory._debug_name = "inventory"
 		self.fieldBuffer = {}
 		self.knownDynamics = {}
 	
@@ -102,14 +99,12 @@ class Display:
 	
 	def setLongHelp(self, longHelp):
 		pass
-		#self.getWidget("help").set_text(longHelp)
 	
-	def getSelectedItem(self, menu=None):
-		return self.inventory.getSelected()
-	
-	def setInventory(self, items):
+	def setInventory(self, items, selector):
 		itemStrs = ["{} {}".format(item, siCount(count)) for item, count in items]
-		self.inventory.setItems(itemStrs)
+		inventory = self.getWidget("inventory")
+		inventory.set_items(itemStrs)
+		inventory.select(selector)
 	
 	def addMessage(self, message, msgtype=None):
 		if msgtype is not None:

@@ -32,7 +32,7 @@ class CommandHandler:
 			"ijson": self.ijson,
 			"ij": self.ijson,
 			"hy": self.hy,
-			"interact": lambda direction: self.input({"use": [self.client.display.inventory.selector, direction]}),
+			"interact": self.use,
 			"selectrel": self.selectRel,
 			"selectidx": self.selectIdx,
 			"moveselected": self.moveSelected,
@@ -73,18 +73,23 @@ class CommandHandler:
 		self.input(["say", text])
 	
 	def selectRel(self, d):
-		inventory = self.client.display.inventory
-		inventory.select((inventory.selector + d + len(inventory.items)) % len(inventory.items))
+		self.client.inventory.selectRelative(d)
 
 	def selectIdx(self, idx):
-		inventory = self.client.display.inventory
-		inventory.select(min(idx,  len(inventory.items) - 1))
+		self.client.inventory.select(idx)
 
 	def moveSelected(self, d):
-		inventory = self.client.display.inventory
+		inventory = self.client.inventory
 		target = (inventory.selector + d + len(inventory.items)) % len(inventory.items)
 		self.input({"moveitem": [inventory.selector, target]})
 		inventory.selector = target
+
+	def use(self, direction):
+		selector = self.client.inventory.selector
+		if selector == 0:
+			self.input({"inspect": direction})
+		else:
+			self.input({"use": [selector, direction]})
 
 	def chat(self, text):
 		self.client.sendChat( text)

@@ -10,6 +10,7 @@ from queue import Queue
 import ratuil.inputs
 
 from .inputhandler import InputHandler
+from .inventory import Inventory
 from .common import messages
 
 class Client:
@@ -24,8 +25,11 @@ class Client:
 		self.closeMessage = None
 		self.helpVisible = False
 		self.playerPos = None
+		self.inventory = None
 		
 		self.inputHandler = InputHandler(self, keybindings.actions)
+
+		self.inventory = Inventory(self.display)
 		
 		self.shortHelp = keybindings.shorthelp or ""
 		self.longHelp = keybindings.longhelp or ""
@@ -139,7 +143,7 @@ class Client:
 		inventory = m.get("inventory")
 		if inventory:
 			items, selected = inventory
-			self.display.setInventory(items)
+			self.inventory.setItems(items)
 
 		sounds = m.get("sounds")
 		if sounds:
@@ -190,6 +194,7 @@ class Client:
 	def onSigwinch(self, signum, frame):
 		self.queue.put(("sigwinch", (signum, frame)))
 	
+
 
 
 

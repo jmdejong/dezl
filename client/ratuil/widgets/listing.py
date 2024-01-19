@@ -14,7 +14,6 @@ class Listing(Widget):
 	
 	def set_items(self, items):
 		self.items = items
-		self.selector = min(self.selector, len(self.items) - 1)
 		self.change()
 	
 	def select(self, index):
