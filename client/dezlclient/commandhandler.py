@@ -32,7 +32,7 @@ class CommandHandler:
 			"ijson": self.ijson,
 			"ij": self.ijson,
 			"hy": self.hy,
-			"interact": self.use,
+			"act": self.act,
 			"selectrel": self.selectRel,
 			"selectidx": self.selectIdx,
 			"moveselected": self.moveSelected,
@@ -84,7 +84,7 @@ class CommandHandler:
 		self.input({"moveitem": [inventory.selector, target]})
 		inventory.selector = target
 
-	def use(self, direction):
+	def act(self, direction):
 		selector = self.client.inventory.selector
 		if selector == 0:
 			self.input({"inspect": direction})

@@ -48,14 +48,14 @@ class Client {
 			Minus: () => this.selectRel(-1),
 		};
 		let shiftKeymap = {
-			KeyW: () => this.interact(NORTH),
-			ArrowUp: () => this.interact(NORTH),
-			KeyS: () => this.interact(SOUTH),
-			ArrowDown: () => this.interact(SOUTH),
-			KeyA: () => this.interact(WEST),
-			ArrowLeft: () => this.interact(WEST),
-			KeyD: () => this.interact(EAST),
-			ArrowRight: () => this.interact(EAST),
+			KeyW: () => this.act(NORTH),
+			ArrowUp: () => this.act(NORTH),
+			KeyS: () => this.act(SOUTH),
+			ArrowDown: () => this.act(SOUTH),
+			KeyA: () => this.act(WEST),
+			ArrowLeft: () => this.act(WEST),
+			KeyD: () => this.act(EAST),
+			ArrowRight: () => this.act(EAST),
 		}
 		document.addEventListener("keydown", e => {
 			if (document.activeElement.classList.contains("captureinput")){
@@ -150,8 +150,12 @@ class Client {
 		this.sendInput("stop");
 	}
 
-	interact(direction) {
-		this.sendInput({use: [this.selected, direction]});
+	act(direction) {
+		if (this.selected === 0) {
+			this.sendInput({inspect: direction});
+		} else {
+			this.sendInput({use: [this.selected, direction]});
+		}
 	}
 
 	selectRel(dif) {
