@@ -477,6 +477,10 @@ impl Tile {
 	pub fn spawn(&self) -> Option<Npc> {
 		self.structure.spawn()
 	}
+
+	pub fn take(&self) -> Option<(Tile, Item)> {
+		Some((Self::ground(self.ground), self.structure.take()?))
+	}
 }
 
 impl Default for Tile {

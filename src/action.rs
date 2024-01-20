@@ -54,10 +54,6 @@ pub enum Action {
 }
 
 impl Action{
-	pub fn take() -> Self {
-		Self::interact(InteractionType::Take, 0, false)
-	}
-	
 	pub fn interact(typ: InteractionType, level: u32, use_item: bool) -> Self {
 		Self::Interact(Interact { typ, level, use_item, received: None } )
 	}

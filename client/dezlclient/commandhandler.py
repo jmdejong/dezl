@@ -88,6 +88,8 @@ class CommandHandler:
 		selector = self.client.inventory.selector
 		if selector == 0:
 			self.input({"inspect": direction})
+		elif selector == 1:
+			self.input({"take": direction})
 		else:
 			self.input({"use": [selector, direction]})
 

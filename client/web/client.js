@@ -153,6 +153,8 @@ class Client {
 	act(direction) {
 		if (this.selected === 0) {
 			this.sendInput({inspect: direction});
+		} else if (this.selected === 1) {
+			this.sendInput({take: direction});
 		} else {
 			this.sendInput({use: [this.selected, direction]});
 		}

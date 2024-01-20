@@ -101,19 +101,26 @@ impl World {
 				Plan::Movement(direction) => {
 					let _ = self.move_creature(&id, direction, &mut creature_map);
 				}
-				Plan::Suicide => {
-					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
-					creature.kill();
-				}
-				Plan::Use(index, direction) => {
-					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
-					let _ = self.interact_creature(&id, direction, item);
-				}
 				Plan::Inspect(direction) => {
 					let creature = self.creatures.get_creature_mut(&id).unwrap();
 					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 					let tile = self.ground.cell(pos);
 					creature.hear(SoundType::Explain, tile.inspect());
+				}
+				Plan::Take(direction) => {
+					let creature = self.creatures.get_creature_mut(&id).unwrap();
+					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+					if let Some(item) = self.ground.take(pos) {
+						creature.inventory.add(item);
+					}
+				}
+				Plan::Use(index, direction) => {
+					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
+					let _ = self.interact_creature(&id, direction, item);
+				}
+				Plan::Suicide => {
+					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
+					creature.kill();
 				}
 				Plan::Stop => {}
 			}

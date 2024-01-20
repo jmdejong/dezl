@@ -18,13 +18,13 @@ use crate::{
 #[func(pub fn quantified(&self) -> bool {true})]
 pub enum Item {
 	#[assoc(name="<inspect>")]
-	#[assoc(actions=vec![Action::Inspect])]
+	#[assoc(actions=panic!("eyes item is deprecated"))]
 	#[assoc(description="Inspect things around you")]
 	#[assoc(quantified=false)]
 	Eyes,
 	
 	#[assoc(name="<take>")]
-	#[assoc(actions=vec![Action::take()])]
+	#[assoc(actions=panic!("hands item is deprecated"))]
 	#[assoc(description="Take items that are laying loose")]
 	#[assoc(quantified=false)]
 	Hands,

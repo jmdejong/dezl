@@ -257,7 +257,7 @@ impl InfiniteMap {
 							(t!(Grass2), 10),
 							(t!(Dirt), 1),
 							(t!(RockFloor), (height * 10.0) as u32),
-						]), 50),
+						]), 10),
 						(*pick_weighted(rind, &[
 							(t!(Grass1), 1),
 							(t!(Grass2), 1),

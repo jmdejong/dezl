@@ -8,6 +8,7 @@ use crate::{
 	timestamp::{Timestamp, Duration},
 	sprite::Sprite,
 	creature::{SpawnId, Npc},
+	item::Item,
 	randomtick
 };
 
@@ -68,6 +69,12 @@ impl Map {
 	pub fn set_ground(&mut self, pos: Pos, ground: Ground) {
 		let new_tile = Tile::structure(ground, self.cell(pos).structure);
 		self.set(pos, new_tile )
+	}
+
+	pub fn take(&mut self, pos: Pos) -> Option<Item> {
+		let (new_tile, item) = self.cell(pos).take()?;
+		self.set(pos, new_tile);
+		Some(item)
 	}
 	
 	pub fn player_spawn(&self) -> Pos {

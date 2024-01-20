@@ -15,6 +15,7 @@ pub enum Plan {
 	Stop,
 	Suicide,
 	Use(usize, Option<Direction>),
+	Take(Option<Direction>),
 	Inspect(Option<Direction>),
 }
 
