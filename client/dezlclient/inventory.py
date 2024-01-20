@@ -6,39 +6,38 @@ class Inventory:
 
 	def __init__(self, display):
 		self.display = display
+		self.actions = [("<inspect>", None), ("<take>", None)]
 		self.items = []
 		self.selector = 0
 
-	def getSelected(self):
-		return self.selector
+	def size(self):
+		return len(self.items) + len(self.actions)
 
 	def select(self, value):
-		self.doSelect(utils.clamp(value, 0, len(self.items)-1))
+		self.selector = utils.clamp(value, 0, self.size() - 1)
+		self.redraw()
 
 	def selectRelative(self, d):
-		itemLen = len(self.items)
+		itemLen = self.size()
 		if itemLen < 1:
 			return
-		self.doSelect((self.selector + d + itemLen) % itemLen)
-
-	def doSelect(self, value):
-		self.selector = value
-		self.display.setInventory(self.items, self.selector)
+		self.selector = (self.selector + d + itemLen) % itemLen
+		self.redraw()
 
 	def setItems(self, items):
 		self.items = items
-		self.selector = utils.clamp(self.selector, 0, len(items)-1)
-		self.display.setInventory(self.items, self.selector)
+		self.selector = utils.clamp(self.selector, 0, self.size() - 1)
+		self.redraw()
 
-	def getItem(self, num):
-		return self.items[num]
+	def redraw(self):
+		self.display.setInventory([*self.actions, *self.items], self.selector)
 
-	def getSelectedItem(self):
-		return self.getItem(self.getSelected())
+	def action(self, direction):
+		if self.selector == 0:
+			return {"inspect": direction}
+		elif self.selector == 1:
+			return {"take": direction}
+		else:
+			return {"use": [self.selector - len(self.actions), direction]}
 
-	def getNumItems(self):
-		return len(self.items)
-
-	def itemName(self, item):
-		return item
 

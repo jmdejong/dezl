@@ -21,7 +21,7 @@ class Client {
 		}
 		this.model = new Model();
 		this.readyToDraw = false;
-		this.selected = 0;
+		this.actionBar = new ActionBar();
 	}
 
 	start(){
@@ -40,12 +40,12 @@ class Client {
 			ArrowLeft: () => this.startMoving(WEST),
 			KeyD: () => this.startMoving(EAST),
 			ArrowRight: () => this.startMoving(EAST),
-			Period: () => this.selectRel(1),
-			Comma: () => this.selectRel(-1),
-			NumpadAdd: () => this.selectRel(1),
-			NumpadSubtract: () => this.selectRel(-1),
-			Equal: () => this.selectRel(1),
-			Minus: () => this.selectRel(-1),
+			Period: () => this.actionBar.selectRel(1),
+			Comma: () => this.actionBar.selectRel(-1),
+			NumpadAdd: () => this.actionBar.selectRel(1),
+			NumpadSubtract: () => this.actionBar.selectRel(-1),
+			Equal: () => this.actionBar.selectRel(1),
+			Minus: () => this.actionBar.selectRel(-1),
 		};
 		let shiftKeymap = {
 			KeyW: () => this.act(NORTH),
@@ -151,21 +151,7 @@ class Client {
 	}
 
 	act(direction) {
-		if (this.selected === 0) {
-			this.sendInput({inspect: direction});
-		} else if (this.selected === 1) {
-			this.sendInput({take: direction});
-		} else {
-			this.sendInput({use: [this.selected, direction]});
-		}
-	}
-
-	selectRel(dif) {
-		this.select((this.selected + this.inventory.length + dif) % this.inventory.length);
-	}
-
-	selectIndex(index) {
-		this.select(index);
+		this.sendInput(this.actionBar.selectedAction(direction));
 	}
 
 	sendInput(input) {
@@ -214,60 +200,11 @@ class Client {
 			document.getElementById("coordinates").textContent = `${m.playerpos.pos[0]}, ${m.playerpos.pos[1]}`;
 		}
 		if (m.inventory) {
-			this.setInventory(m.inventory[0]);
-			this.select(Math.min(this.selected, this.inventory.length - 1));
+			this.actionBar.setInventory(m.inventory[0]);
 		}
 		if (m.sounds) {
 			for (let sound of m.sounds) {
 				this.print(sound[1], sound[0]);
-			}
-		}
-	}
-
-	setInventory(items) {
-		this.inventory = items;
-		let table = document.getElementById("inventory");
-
-		let rows = table.querySelectorAll("li");
-		rows.forEach(function(row) {
-			row.remove();
-		});
-
-		for (let i=0; i<items.length; ++i) {
-			let item = items[i];
-			let name = item[0];
-			let quantity = item[1];
-			let row = document.createElement("li");
-			row.onclick = () => this.select(i | 0);
-			row.className = "inv-row";
-
-			let nm = document.createElement("span");
-			nm.className = "inventory-name";
-			nm.innerText = name;
-			row.appendChild(nm);
-
-			let am = document.createElement("span");
-			am.className = "inventory-amount";
-			if (quantity !== null && quantity !== undefined) {
-				am.innerText = quantity;
-			}
-			row.appendChild(am);
-
-			table.appendChild(row);
-		}
-	}
-
-	select(index) {
-		this.selected = index;
-		let table = document.getElementById("inventory");
-		for (let i=0; i<table.children.length; ++i) {
-			let row = table.children[i];
-			row.classList.remove("inv-selected");
-			if (i == this.selected) {
-				row.classList.add("inv-selected");
-			}
-			if (Math.abs(i - this.selected) <= 1) {
-				row.scrollIntoView({behavior: "instant", block: "nearest"});
 			}
 		}
 	}

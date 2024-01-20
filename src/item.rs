@@ -17,18 +17,6 @@ use crate::{
 #[func(pub fn name(&self) -> &str)]
 #[func(pub fn quantified(&self) -> bool {true})]
 pub enum Item {
-	#[assoc(name="<inspect>")]
-	#[assoc(actions=panic!("eyes item is deprecated"))]
-	#[assoc(description="Inspect things around you")]
-	#[assoc(quantified=false)]
-	Eyes,
-	
-	#[assoc(name="<take>")]
-	#[assoc(actions=panic!("hands item is deprecated"))]
-	#[assoc(description="Take items that are laying loose")]
-	#[assoc(quantified=false)]
-	Hands,
-	
 	#[assoc(name="reed")]
 	#[assoc(description="Some cut reeds")]
 	Reed,

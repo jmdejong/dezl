@@ -85,13 +85,7 @@ class CommandHandler:
 		inventory.selector = target
 
 	def act(self, direction):
-		selector = self.client.inventory.selector
-		if selector == 0:
-			self.input({"inspect": direction})
-		elif selector == 1:
-			self.input({"take": direction})
-		else:
-			self.input({"use": [selector, direction]})
+		self.input(self.client.inventory.action(direction))
 
 	def chat(self, text):
 		self.client.sendChat( text)
