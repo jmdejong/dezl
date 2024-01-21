@@ -83,7 +83,7 @@ fn main(){
 
 fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) {
 	
-
+	eprintln!("playerid size: {}", std::mem::size_of::<PlayerId>());
 	eprintln!("Server admin(s): {}", config.admins);
 
 	let adresses = config.address
@@ -208,7 +208,7 @@ fn bench_view(iterations: usize) {
 	let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
 	let mut world = World::new("bench".to_string(), basemap, mapdef);
 	let mut player_save = world.default_player();
-	let player_id = PlayerId("Player".to_string());
+	let player_id = PlayerId::new("Player");
 	let now = Instant::now();
 	for i in 0..iterations {
 		player_save.pos = Pos::new(i as i32 * 121 - 22, i as i32 * 8 - 63);

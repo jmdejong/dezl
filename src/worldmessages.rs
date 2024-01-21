@@ -105,7 +105,7 @@ impl MessageCache {
 			msg.remove_old(cached);
 			cached.add(msg);
 		} else {
-			self.cache.insert(player.clone(), msg.clone());
+			self.cache.insert(*player, msg.clone());
 		}
 	}
 	

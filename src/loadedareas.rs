@@ -34,8 +34,8 @@ impl LoadedAreas {
 					.unwrap_or(false);
 			if !in_view_range {
 				let (total_area, new_area) = Self::new_area(*pos, old_area);
-				self.loaded.insert(player_id.clone(), total_area);
-				self.fresh.insert(player_id.clone(), new_area);
+				self.loaded.insert(*player_id, total_area);
+				self.fresh.insert(*player_id, new_area);
 			}
 		}
 		self.loaded.retain(|player_id, _| player_positions.contains_key(player_id));

@@ -151,7 +151,7 @@ impl GameServer {
 			if let Some(player) = self.players.remove(&clientid){
 				self.connections.remove(&player);
 				self.broadcast_message(&format!("{} disconnected", player));
-				actions.push(Action::Leave(player.clone()));
+				actions.push(Action::Leave(player));
 			}
 		}
 		actions
@@ -211,27 +211,27 @@ impl GameServer {
 				if self.players.contains_key(&id) {
 					return Err(merr!(action, "You can not change your name"));
 				}
-				let player = PlayerId(name);
+				let player = PlayerId::new(&name);
 				if self.connections.contains_key(&player) {
 					return Err(merr!(ErrTyp::NameTaken, "Another connection to this player exists already"));
 				}
 				self.broadcast_message(&format!("{} connected", player));
-				self.players.insert(id, player.clone());
-				self.connections.insert(player.clone(), id);
+				self.players.insert(id, player);
+				self.connections.insert(player, id);
 				if self.send(&player, ServerMessage::Connected(format!("successfully connected as {}", player))).is_err() {
 					return Err(merr!(ErrTyp::ServerError, "unable to send connected message"))
 				}
 				Ok(Some(Action::Join(player)))
 			}
 			ClientMessage::Chat(text) => {
-				let player = self.players.get(&id).ok_or(merr!(action, "Set a valid name before you send any other messages"))?.clone();
+				let player = self.players.get(&id).ok_or(merr!(action, "Set a valid name before you send any other messages"))?;
 				self.broadcast_message(&format!("{}: {}", player, text));
 				Ok(None)
 			}
 			ClientMessage::Input(inp) => {
 				let player = self.players.get(&id).ok_or(merr!(action, "Set a name before you send any other messages"))?;
 				let control = Control::deserialize(&inp).map_err(|err| merr!(action, &format!("unknown action {} {}", inp, err)))?;
-				Ok(Some(Action::Input(player.clone(), control)))
+				Ok(Some(Action::Input(*player, control)))
 			}
 		}
 	}

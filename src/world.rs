@@ -61,7 +61,7 @@ impl World {
 	}
 	
 	pub fn control_player(&mut self, playerid: &PlayerId, control: Control) -> Result<(), CreatureNotFound> {
-		self.creatures.get_player_mut(playerid).ok_or_else(|| CreatureNotFound(CreatureId::Player(playerid.clone())))?.control(control);
+		self.creatures.get_player_mut(playerid).ok_or(CreatureNotFound(CreatureId::Player(*playerid)))?.control(control);
 		Ok(())
 	}
 	
@@ -72,14 +72,14 @@ impl World {
 	
 	fn update_creatures(&mut self) {
 		let mut creature_map: HashMap<Pos, CreatureId> = self.creatures.all()
-			.map(|(creatureid, creature)| (creature.pos, creatureid.clone()))
+			.map(|(creatureid, creature)| (creature.pos, creatureid))
 			.collect();
-		for npc in self.creatures.npcs() {
-			let rind = random::randomize_u32(npc.seed() + self.time.0 as u32);
+		for (id, mut creature) in self.creatures.npcs_mut() {
+			let rind = random::randomize_u32(random::randomize_pos(id.0) + self.time.0 as u32);
 			if random::randomize_u32(rind + 543) % 10 == 0 {
 				let direction = *random::pick(random::randomize_u32(rind + 385), &[Direction::North, Direction::South, Direction::East, Direction::West]);
 				let control = Plan::Move(direction);
-				let _ = self.creatures.control_creature(&npc, Control::Plan(control));
+				creature.control(Control::Plan(control));
 			}
 		}
 		let creatures: Vec<CreatureId> = self.creatures.all().map(|(id, _)| id).collect();
@@ -142,7 +142,7 @@ impl World {
 			if creature_map.get(&creature.pos) == Some(id){
 				creature_map.remove(&creature.pos);
 			}
-			creature_map.insert(newpos, id.clone());
+			creature_map.insert(newpos, *id);
 			creature.move_to(newpos, self.time);
 		}
 		Ok(())
@@ -170,7 +170,7 @@ impl World {
 					creature.hear(BuildError, "Too close to spawn".to_string());
 					return Ok(())
 				}
-				self.claims.insert(player_id.clone(), pos);
+				self.claims.insert(*player_id, pos);
 			} else {
 				creature.hear(
 					BuildError,
@@ -216,7 +216,7 @@ impl World {
 
 	fn update_loaded_areas(&mut self) {
 		let player_positions: HashMap<PlayerId, Pos> = self.creatures.iter_players()
-			.map(|(id, body)| (id.clone(), body.pos))
+			.map(|(id, body)| (*id, body.pos))
 			.collect();
 		self.loaded_areas.update(&player_positions);
 		for fresh_area in self.loaded_areas.all_fresh() {
@@ -253,7 +253,7 @@ impl World {
 		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
 		let dynamics: HashMap<CreatureId, CreatureView> = self.creatures.all()
-			.map(|(id, creature)| (id.clone(), creature.view()))
+			.map(|(id, creature)| (id, creature.view()))
 			.collect();
 		for (id, body) in self.creatures.iter_players() {
 			let mut wm = WorldMessage::new(self.time);
@@ -267,7 +267,7 @@ impl World {
 			wm.inventory = Some(body.inventory.view());
 			wm.sounds = body.heard_sounds.clone();
 
-			views.insert(id.clone(), wm);
+			views.insert(*id, wm);
 		}
 		views
 	}

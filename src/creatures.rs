@@ -9,10 +9,9 @@ use crate::{
 	pos::Pos,
 	creature::{Creature, PlayerSave, SpawnId, Npc},
 	loadedareas::LoadedAreas,
-	random,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CreatureId {
 	Player(PlayerId),
 	Spawned(SpawnId),
@@ -26,20 +25,13 @@ impl CreatureId {
 			None
 		}
 	}
-
-	pub fn seed(&self) -> u32 {
-		match self {
-			Self::Player(PlayerId(name)) => random::randomize_str(name),
-			Self::Spawned(SpawnId(origin)) => random::randomize_pos(*origin),
-		}
-	}
 }
 
 impl Serialize for CreatureId {
 	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
 	where S: Serializer {
 		match self {
-			Self::Player(PlayerId(name)) => format!("p-{}", name),
+			Self::Player(id) => format!("p-{}", id.name()),
 			Self::Spawned(SpawnId(Pos{x, y})) => format!("s-{},{}", x, y),
 		}.serialize(serializer)
 	}
@@ -62,11 +54,11 @@ impl Creatures {
 
 	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerAlreadyExists> {
 		if self.players.contains_key(playerid){
-			return Err(PlayerAlreadyExists(playerid.clone()));
+			return Err(PlayerAlreadyExists(*playerid));
 		}
 		let body = Creature::load_player(saved);
 		self.players.insert(
-			playerid.clone(),
+			*playerid,
 			Player::new(body)
 		);
 		Ok(())
@@ -74,7 +66,7 @@ impl Creatures {
 
 	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerNotFound> {
 		self.players.remove(playerid)
-			.ok_or_else(|| PlayerNotFound(playerid.clone()))?;
+			.ok_or(PlayerNotFound(*playerid))?;
 		Ok(())
 	}
 
@@ -100,24 +92,14 @@ impl Creatures {
 		Some(self.players.get(playerid)?.body.borrow_mut())
 	}
 
-	// pub fn player_positions(&self) -> HashMap<PlayerId, Pos> {
-	// 	self.players.iter()
-	// 		.map(|(player_id, player)| (player_id.clone(), player.body.borrow().pos))
-	// 		.collect()
-	// }
-
-	pub fn npcs(&self) -> Vec<CreatureId> {
-		self.spawned_creatures.keys().map(|spawn_id| CreatureId::Spawned(*spawn_id)).collect()
-	}
-
-	pub fn control_creature(&mut self, id: &CreatureId, control: Control) -> Result<(), CreatureNotFound> {
-		self.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?.control(control);
-		Ok(())
+	pub fn npcs_mut(&self) -> impl Iterator<Item=(&SpawnId, RefMut<Creature>)> {
+		self.spawned_creatures.iter()
+			.map(|(spawn_id, creature)| (spawn_id, creature.borrow_mut()))
 	}
 
 	fn iter_cell(&self) -> impl Iterator<Item=(CreatureId, &RefCell<Creature>)> {
 		self.players.iter()
-			.map(|(player_id, player)| (CreatureId::Player(player_id.clone()), &player.body))
+			.map(|(player_id, player)| (CreatureId::Player(*player_id), &player.body))
 			.chain(
 				self.spawned_creatures.iter()
 					.map(|(spawn_id, creature)| (CreatureId::Spawned(*spawn_id), creature))
@@ -127,24 +109,10 @@ impl Creatures {
 	pub fn all_mut(&self) -> impl Iterator<Item=(CreatureId, RefMut<Creature>)> {
 		self.iter_cell().map(|(id, body)| (id, body.borrow_mut()))
 	}
-	// 	self.players.iter()
-	// 		.map(|(player_id, player)| (CreatureId::Player(player_id.clone()), player.body.borrow_mut()))
-	// 		.chain(
-	// 			self.spawned_creatures.iter_mut()
-	// 				.map(|(spawn_id, creature)| (CreatureId::Spawned(*spawn_id), creature.borrow_mut()))
-	// 		 )
-	// }
- //
+
 	pub fn all(&self) -> impl Iterator<Item=(CreatureId, Ref<Creature>)> {
 		self.iter_cell().map(|(id, body)| (id, body.borrow()))
 	}
-	// 	self.players.iter()
-	// 		.map(|(player_id, player)| (CreatureId::Player(player_id.clone()), player.body.borrow()))
-	// 		.chain(
-	// 			self.spawned_creatures.iter()
-	// 				.map(|(spawn_id, creature)| (CreatureId::Spawned(*spawn_id), creature.borrow()))
-	// 		 )
-	// }
 
 	fn creature_cell(&self, id: &CreatureId) -> Option<&RefCell<Creature>> {
 		match id {
