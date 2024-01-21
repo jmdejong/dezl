@@ -4,7 +4,6 @@ use std::collections::HashMap;
 
 use serde_json::{Value, json};
 use serde::{Serialize, Deserialize, Serializer};
-use unicode_categories::UnicodeCategories;
 use time::OffsetDateTime;
 use crate::util::{HolderId, Holder};
 
@@ -204,8 +203,8 @@ impl GameServer {
 					return Err(merr!(name, "A name must have at least one character"));
 				}
 				for chr in name.chars() {
-					if !(chr.is_letter() || chr.is_number() || chr.is_punctuation_connector()){
-						return Err(merr!(name, "A name can only contain letters, numbers and underscores"));
+					if !(chr.is_ascii_alphanumeric() || chr == '_'){
+						return Err(merr!(name, "A name can only contain ascii letters, numbers and underscores"));
 					}
 				}
 				if self.players.contains_key(&id) {

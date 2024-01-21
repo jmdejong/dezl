@@ -11,8 +11,8 @@ pub struct PlayerId{
 impl PlayerId {
 	pub fn new(name: &str) -> Self {
 		let len = name.as_bytes().len();
-		if len > 15 {
-			panic!("player name {} is too long (max 15 bytes allowed)", name);
+		if len > 14 {
+			panic!("player name {} is too long (max 14 bytes allowed)", name);
 		}
 		let mut id = Self {
 			len: len as u8,
