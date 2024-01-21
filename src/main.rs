@@ -83,7 +83,6 @@ fn main(){
 
 fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) {
 	
-	eprintln!("playerid size: {}", std::mem::size_of::<PlayerId>());
 	eprintln!("Server admin(s): {}", config.admins);
 
 	let adresses = config.address

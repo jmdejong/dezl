@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize, Serializer, Deserializer};
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PlayerId{
 	len: u8,
-	bytes: [u8; 15],
+	bytes: [u8; 14],
 }
 
 impl PlayerId {
