@@ -47,7 +47,6 @@ impl Interact {
 pub enum Action {
 	Interact(Interact),
 	Clear,
-	Inspect,
 	BuildClaim(Structure),
 	Craft(CraftType, Item, HashMap<Item, usize>),
 	Build(Structure, HashMap<Item, usize>),

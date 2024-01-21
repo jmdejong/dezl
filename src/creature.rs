@@ -21,6 +21,7 @@ pub struct Creature {
 	is_dead: bool,
 	movement: Option<Movement>,
 	pub plan: Option<Plan>,
+	pub name: String,
 }
 
 impl Creature {
@@ -35,6 +36,7 @@ impl Creature {
 			is_dead: false,
 			movement: None,
 			plan: None,
+			name: "Player".to_string(),
 		}
 	}
 
@@ -48,6 +50,7 @@ impl Creature {
 			is_dead: false,
 			movement: None,
 			plan: None,
+			name: "Frog".to_string(),
 		}
 	}
 	

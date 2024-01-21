@@ -102,13 +102,20 @@ impl World {
 					let _ = self.move_creature(&id, direction, &mut creature_map);
 				}
 				Plan::Inspect(direction) => {
-					let creature = self.creatures.get_creature_mut(&id).unwrap();
+					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
 					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 					let tile = self.ground.cell(pos);
-					creature.hear(SoundType::Explain, tile.inspect());
+					let mut text = tile.inspect();
+					if let Some(other) = creature_map.get(&pos) {
+						if other != &id {
+							let name = &self.creatures.get_creature(other).unwrap().name;
+							text = format!("{} | {}", text, name);
+						}
+					}
+					creature.hear(SoundType::Explain, text);
 				}
 				Plan::Take(direction) => {
-					let creature = self.creatures.get_creature_mut(&id).unwrap();
+					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
 					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 					if let Some(item) = self.ground.take(pos) {
 						creature.inventory.add(item);
@@ -119,7 +126,7 @@ impl World {
 					let _ = self.interact_creature(&id, direction, item);
 				}
 				Plan::Suicide => {
-					let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
+					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
 					creature.kill();
 				}
 				Plan::Stop => {}
@@ -128,7 +135,7 @@ impl World {
 	}
 
 	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut HashMap<Pos, CreatureId>) -> Result<(), CreatureNotFound> {
-		let creature = self.creatures.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?;
+		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let newpos = creature.pos + direction;
 		let tile = self.ground.cell(newpos);
 		if !tile.blocking() && !creature_map.contains_key(&newpos) {
@@ -142,7 +149,7 @@ impl World {
 	}
 
 	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) -> Result<(), CreatureNotFound> {
-		let creature = self.creatures.get_creature_mut(id).ok_or(CreatureNotFound(id.clone()))?;
+		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 		let tile = self.ground.cell(pos);
 		let Some(interaction) = tile.interact(item, self.time)
@@ -208,8 +215,8 @@ impl World {
 	}
 
 	fn update_loaded_areas(&mut self) {
-		let player_positions: HashMap<PlayerId, Pos> = self.creatures.players.iter()
-			.map(|(player_id, player)| (player_id.clone(), player.body.pos))
+		let player_positions: HashMap<PlayerId, Pos> = self.creatures.iter_players()
+			.map(|(id, body)| (id.clone(), body.pos))
 			.collect();
 		self.loaded_areas.update(&player_positions);
 		for fresh_area in self.loaded_areas.all_fresh() {
@@ -248,9 +255,8 @@ impl World {
 		let dynamics: HashMap<CreatureId, CreatureView> = self.creatures.all()
 			.map(|(id, creature)| (id.clone(), creature.view()))
 			.collect();
-		for (id, player) in self.creatures.players.iter() {
+		for (id, body) in self.creatures.iter_players() {
 			let mut wm = WorldMessage::new(self.time);
-			let body = &player.body;
 			wm.viewarea = self.loaded_areas.loaded(id).map(|area| ViewAreaMessage{area});
 			wm.section = self.loaded_areas.fresh(id).map(|area| self.ground.view(area));
 			if changes.is_some() {
@@ -267,7 +273,7 @@ impl World {
 	}
 
 	pub fn clear_step(&mut self) {
-		for (_, creature) in self.creatures.all_mut() {
+		for (_, mut creature) in self.creatures.all_mut() {
 			creature.reset();
 		}
 	}

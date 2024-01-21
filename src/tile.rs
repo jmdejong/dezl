@@ -384,11 +384,11 @@ impl Tile {
 	}
 
 	pub fn inspect(&self) -> String {
-		format!(
-			"{}  --  {}",
-			self.ground.describe().unwrap_or(""),
-			self.structure.description().unwrap_or_default()
-		)
+		let mut text = self.ground.describe().unwrap_or("").to_string();
+		if let Some(s) = self.structure.description() {
+			text = format!("{} | {}", text, s);
+		}
+		text
 	}
 	
 	pub fn interact(&self, item: Item, time: Timestamp) -> Option<InteractionResult> {
@@ -397,12 +397,10 @@ impl Tile {
 	
 	pub fn act(&self, action: Action, item: Item, time: Timestamp) -> Option<InteractionResult> {
 		if let Some(name) = self.structure.explain() {
-			if action != Action::Inspect {
-				return Some(InteractionResult {
-					message: Some((SoundType::Explain, format!("{}: {}", name, item.description().unwrap_or("Unknown")))),
-					..Default::default()
-				});
-			}
+			return Some(InteractionResult {
+				message: Some((SoundType::Explain, format!("{}: {}", name, item.description().unwrap_or("Unknown")))),
+				..Default::default()
+			});
 		}
 		match action {
 			Action::Interact(interact) => {
@@ -424,14 +422,6 @@ impl Tile {
 				} else {
 					None
 				}
-			Action::Inspect => 
-				Some(InteractionResult {
-					message: Some((
-						SoundType::Explain,
-						self.inspect()
-					)),
-					..Default::default()
-				}),
 			Action::BuildClaim(structure) =>
 				if self.can_build() {
 					Some(InteractionResult {

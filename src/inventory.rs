@@ -5,7 +5,6 @@ use crate::{
 	worldmessages::InventoryMessage,
 };
 
-const FIXED_ENTRIES: usize = 0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Inventory {
@@ -42,19 +41,19 @@ impl Inventory {
 	}
 	
 	fn count(&self) -> usize {
-		self.items.len() + FIXED_ENTRIES
+		self.items.len()
 	}
 	
 	pub fn move_item(&mut self, from: usize, target: usize) {
-		if from < FIXED_ENTRIES || target < FIXED_ENTRIES || from > self.count() || target > self.count() || from == target{
+		if from > self.count() || target > self.count() || from == target{
 			return;
 		}
-		let item = self.items.remove(from - FIXED_ENTRIES);
-		self.items.insert(target - FIXED_ENTRIES, item);
+		let item = self.items.remove(from);
+		self.items.insert(target, item);
 	}
 
 	pub fn get_item(&self, index: usize) -> Item {
-		self.items[index - FIXED_ENTRIES].0
+		self.items[index].0
 	}
 	
 	pub fn pay(&mut self, mut cost: HashMap<Item, usize>) -> bool {
