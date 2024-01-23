@@ -8,14 +8,16 @@ use crate::{
 	tile::Structure,
 	hashmap,
 	crop::Crop,
+	sprite::Sprite,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Assoc)]
 #[serde(rename_all="snake_case")]
 #[func(pub fn actions(&self) -> Vec<Action> {Vec::new()})]
-#[func(pub fn description(&self) -> Option<&str>)]
+#[func(pub fn description(&self) -> &str)]
 #[func(pub fn name(&self) -> &str)]
 #[func(pub fn quantified(&self) -> bool {true})]
+#[func(pub fn sprite(&self) -> Option<Sprite>)]
 pub enum Item {
 	#[assoc(name="reed")]
 	#[assoc(description="Some cut reeds")]
@@ -27,7 +29,8 @@ pub enum Item {
 	Flower,
 	
 	#[assoc(name="pebble")]
-	#[assoc(description="A small stone")]
+	#[assoc(sprite = Sprite::Pebble)]
+	#[assoc(description="Pebble. A small stone")]
 	Pebble,
 	
 	#[assoc(name="stone")]
@@ -71,7 +74,8 @@ pub enum Item {
 	BrownSeed,
 	
 	#[assoc(name="stick")]
-	#[assoc(description="Stick")]
+	#[assoc(description="Wooden stick")]
+	#[assoc(sprite = Sprite::Stick)]
 	#[assoc(actions=vec![
 		Action::Craft(CraftType::GardeningTable, Item::Hoe, hashmap![Item::Reed => 1, Item::SharpStone => 1]),
 		Action::interact(Fuel, 1, true)

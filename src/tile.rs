@@ -194,11 +194,6 @@ pub enum Structure {
 	#[assoc(describe = "Flower")]
 	Flower,
 	
-	#[assoc(sprite = Sprite::Pebble)]
-	#[assoc(take = Item::Pebble)]
-	#[assoc(describe = "Pebble. A small stone")]
-	Pebble,
-	
 	#[assoc(sprite = Sprite::Stone)]
 	#[assoc(take = Item::Stone)]
 	#[assoc(interactions = vec![
@@ -257,11 +252,6 @@ pub enum Structure {
 	#[assoc(blocking = true)]
 	#[assoc(describe = "Mark stone. Center of a land claim")]
 	MarkStone,
-	
-	#[assoc(sprite = Sprite::Stick)]
-	#[assoc(describe = "A wooden stick")]
-	#[assoc(interactions = vec![Interactable::take(&[Item::Stick])])]
-	Stick,
 	
 	#[assoc(sprite = Sprite::SeedingHardwood)]
 	#[assoc(describe = "Seeding Hardwood")]
@@ -331,7 +321,12 @@ pub enum Structure {
 	Crop(Crop),
 
 	#[assoc(spawn = *_0)]
-	Spawn(Npc)
+	Spawn(Npc),
+
+	#[assoc(take = *_0)]
+	#[assoc(describe = _0.description())]
+	#[assoc(sprite = _0.sprite()?)]
+	Item(Item),
 }
 
 
@@ -398,7 +393,7 @@ impl Tile {
 	pub fn act(&self, action: Action, item: Item, time: Timestamp) -> Option<InteractionResult> {
 		if let Some(name) = self.structure.explain() {
 			return Some(InteractionResult {
-				message: Some((SoundType::Explain, format!("{}: {}", name, item.description().unwrap_or("Unknown")))),
+				message: Some((SoundType::Explain, format!("{}: {}", name, item.description()))),
 				..Default::default()
 			});
 		}

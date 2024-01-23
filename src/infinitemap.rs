@@ -4,6 +4,7 @@ use crate::{
 	pos::{Pos, Area},
 	timestamp::Timestamp,
 	tile::{Tile, Ground, Structure},
+	item::Item,
 	basemap::BaseMap,
 	random::{WhiteNoise, randomize_u32, pick, pick_weighted},
 	randomtick,
@@ -16,6 +17,7 @@ macro_rules! t {
 	($g:ident) => {Tile::ground(Ground::$g)};
 	($g:ident, $s:ident) => {Tile::structure(Ground::$g, Structure::$s)};
 	($g:expr) => {Tile::ground($g)};
+	($g:ident, $s:expr) => {Tile::structure(Ground::$g, $s)};
 	($g:expr, $s:expr) => {Tile::structure($g, $s)};
 }
 
@@ -199,7 +201,7 @@ impl InfiniteMap {
 						(t!(Moss), 40),
 						(t!(DeadLeaves), 40),
 						(t!(Dirt), 30),
-						(t!(Dirt, Stick), 1)
+						(t!(Dirt, Structure::Item(Item::Stick)), 1)
 					]), 100),
 					(t!(Grass1, Sapling), 3),
 					(t!(Dirt, YoungTree), 4),
@@ -267,7 +269,7 @@ impl InfiniteMap {
 								(t!(RockFloor, Stone), 5),
 								(t!(RockFloor, Gravel), 20),
 								(t!(RockFloor), 50),
-								(t!(RockFloor, Pebble), 3),
+								(t!(RockFloor, Structure::Item(Item::Pebble)), 3),
 								(t!(RockFloor), 50),
 							]), 3),
 						]), 50),
@@ -283,7 +285,7 @@ impl InfiniteMap {
 						(t!(Grass1), 50),
 						(t!(Grass2), 50),
 						(t!(Grass3), 48),
-						(t!(Ground::Grass1, Structure::Spawn(Npc::Frog)), 2),
+						(t!(Grass1, Structure::Spawn(Npc::Frog)), 2),
 						(t!(Grass1, Shrub), 1),
 						(t!(Grass1, Rush), 10),
 						(*pick(
