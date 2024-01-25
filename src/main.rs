@@ -47,7 +47,7 @@ use self::{
 	controls::Action,
 	world::World,
 	worldmessages::MessageCache,
-	persistence::{PersistentStorage, FileStorage, LoaderError},
+	persistence::{PersistentStorage, file::FileStorage, LoaderError},
 	config::{Config, WorldAction, WorldConfig, MapDef},
 	basemap::BaseMapImpl,
 };
@@ -132,10 +132,10 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 						eprintln!("error controlling player {:?}: {:?}", player, err);
 					}
 				}
-				Action::Join(player) => {
+				Action::Join(player, name) => {
 					let playersave = match persistence.load_player(&player) {
 						Ok(save) => save,
-						Err(LoaderError::MissingResource(_)) => world.default_player(),
+						Err(LoaderError::MissingResource(_)) => world.default_player(name),
 						Err(err) => {
 							eprintln!("Error loading save for player {:?}: {:?}", player, err);
 							gameserver.send_or_log(&player, ServerMessage::Error(ErrTyp::LoadError, "could not load saved player data"));
@@ -208,7 +208,7 @@ fn bench_view(iterations: usize) {
 	let mapdef = MapDef::Infinite{seed: 9876};
 	let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
 	let mut world = World::new("bench".to_string(), basemap, mapdef);
-	let mut player_save = world.default_player();
+	let mut player_save = world.default_player("Player".to_string());
 	let player_id = PlayerId::new("Player");
 	let now = Instant::now();
 	for i in 0..iterations {

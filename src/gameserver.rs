@@ -220,7 +220,7 @@ impl GameServer {
 				if self.send(&player, ServerMessage::Connected(format!("successfully connected as {}", player))).is_err() {
 					return Err(merr!(ErrTyp::ServerError, "unable to send connected message"))
 				}
-				Ok(Some(Action::Join(player)))
+				Ok(Some(Action::Join(player, name)))
 			}
 			ClientMessage::Chat(text) => {
 				let player = self.players.get(&id).ok_or(merr!(action, "Set a valid name before you send any other messages"))?;

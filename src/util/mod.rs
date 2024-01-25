@@ -5,29 +5,6 @@ pub mod math;
 pub use holder::{Holder, HolderId};
 
 
-use std::fs;
-use std::path::Path;
-use crate::{
-	errors::AnyError,
-	aerr
-};
-
-pub fn write_file_safe<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> Result<(), AnyError> {
-	let temppath = path
-		.as_ref()
-		.with_file_name(
-			format!(
-				"tempfile_{}_{}.tmp",
-				path.as_ref().file_name().ok_or_else(|| aerr!("writing to directory"))?.to_str().unwrap_or("invalid"),
-				rand::random::<u64>()
-			)
-		);
-	fs::write(&temppath, contents)?;
-	fs::rename(&temppath, path)?;
-	Ok(())
-}
-
-
 #[macro_export]
 macro_rules! hashmap {
 	( $($key:expr => $value:expr ),* ) => {{

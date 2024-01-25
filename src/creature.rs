@@ -36,7 +36,7 @@ impl Creature {
 			is_dead: false,
 			movement: None,
 			plan: None,
-			name: "Player".to_string(),
+			name: saved.name,
 		}
 	}
 
@@ -60,6 +60,7 @@ impl Creature {
 	
 	pub fn save(&self) -> PlayerSave {
 		PlayerSave {
+			name: self.name.clone(),
 			pos: self.pos,
 			inventory: self.inventory.save()
 		}
@@ -120,13 +121,15 @@ impl Creature {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerSave {
+	pub name: String,
+	pub pos: Pos,
 	pub inventory: InventorySave,
-	pub pos: Pos
 }
 
 impl PlayerSave {
-	pub fn new(pos: Pos) -> Self {
+	pub fn new(name: String, pos: Pos) -> Self {
 		Self {
+			name,
 			pos,
 			inventory: Vec::new()
 		}

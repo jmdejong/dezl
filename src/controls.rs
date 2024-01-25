@@ -34,7 +34,7 @@ pub enum Control {
 
 #[derive(Debug, Clone)]
 pub enum Action {
-	Join(PlayerId),
+	Join(PlayerId, String),
 	Leave(PlayerId),
 	Input(PlayerId, Control)
 }

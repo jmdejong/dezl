@@ -44,8 +44,8 @@ impl World {
 		}
 	}
 	
-	pub fn default_player(&mut self) -> PlayerSave {
-		PlayerSave::new(self.ground.player_spawn())
+	pub fn default_player(&mut self, name: String) -> PlayerSave {
+		PlayerSave::new(name, self.ground.player_spawn())
 	}
 	
 	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerAlreadyExists> {
