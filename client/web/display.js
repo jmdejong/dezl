@@ -1,5 +1,10 @@
 "use strict";
 
+const ClearMode = {
+	Tile: "Tile",
+	None: "None"
+}
+
 class Sprite {
 	constructor(image, x, y, width, height, area) {
 		this.image = image;
@@ -37,15 +42,20 @@ class SpriteMap {
 		for (let name in mapping) {
 			let entry = mapping[name];
 			let layers = {};
-			let mainSprite = new Sprite(image, entry.x * size, entry.y * size, size, size)
-			layers[entry.layer || "main"] = mainSprite;
-			if (entry.ho) {
-				layers.ho = new Sprite(image, entry.x * size, (entry.y - 1) * size, size, size);
+			if (entry.wide) {
+				layers.hol = new Sprite(image, (entry.x - 1) * size, (entry.y - 1) * size, size, size);
+				layers.hom = new Sprite(image, entry.x * size, (entry.y - 1) * size, size, size);
+				layers.hor = new Sprite(image, (entry.x + 1) * size, (entry.y - 1) * size, size, size);
+				layers.wol = new Sprite(image, (entry.x - 1) * size, entry.y * size, size, size);
+				layers.wom = new Sprite(image, entry.x * size, entry.y * size, size, size);
+				layers.wor = new Sprite(image, (entry.x + 1) * size, entry.y * size, size, size);
+			} else {
+				let mainSprite = new Sprite(image, entry.x * size, entry.y * size, size, size)
+				layers[entry.layer || "main"] = mainSprite;
+				if (entry.layer == "ground") {
+					layers.fuzz = fuzzTemplate.fuzz(mainSprite);
+				}
 			}
-			if (entry.layer == "ground") {
-				layers.fuzz = fuzzTemplate.fuzz(mainSprite);
-			}
-
 			this.sprites[name] = new LayeredSprite(layers, entry.border);
 		}
 	}
@@ -148,6 +158,28 @@ class DrawBuffer {
 	}
 }
 
+class Layer {
+	constructor(name, opts) {
+		opts = opts || {};
+		this.name = name;
+		this.clear = opts.clearMode || ClearMode.Tile;
+		this.offset = opts.offset || [0, 0];
+		this.trueScale = opts.trueScale || false;
+	}
+
+	clearMode() {
+		return this.clear;
+	}
+
+	offsetX() {
+		return this.offset[0];
+	}
+
+	offsetY() {
+		return this.offset[1];
+	}
+
+}
 
 class Display {
 	tileSize = 8;
@@ -155,7 +187,20 @@ class Display {
 	constructor(canvas, spritemap, fuzzSprite) {
 		this.canvas = canvas;
 		this.outerCtx = canvas.getContext("2d");
-		this.layers = ["ground", "fuzz", "base", "borders", "main", "creatures", "ho"];
+		this.layers = [
+			new Layer("ground"),
+			new Layer("fuzz", {clear: false}),
+			new Layer("base"),
+			new Layer("borders", {clear: false}),
+			new Layer("main"),
+			new Layer("creatures", {clear: false, trueScale: true}),
+			new Layer("wol", {offset: [-1, 0]}),
+			new Layer("wom", {offset: [0, 0]}),
+			new Layer("wor", {offset: [1, 0]}),
+			new Layer("hol", {offset: [-1, -1]}),
+			new Layer("hom", {offset: [0, -1]}),
+			new Layer("hor", {offset: [1, -1]}),
+		];
 		this.buffers = {};
 		this.spritemap = spritemap;
 		this.offsetX = 0;
@@ -173,14 +218,14 @@ class Display {
 	setViewArea(area){
 		for (let layer of this.layers) {
 			let resolution = this.tileSize;
-			if (layer === "creatures") {
+			if (layer.trueScale) {
 				resolution *= this.scale;
 			}
 			let buffer = new DrawBuffer(area, resolution);
-			if (this.buffers[layer]) {
-				buffer.drawBuffer(this.buffers[layer]);
+			if (this.buffers[layer.name]) {
+				buffer.drawBuffer(this.buffers[layer.name]);
 			}
-			this.buffers[layer] = buffer;
+			this.buffers[layer.name] = buffer;
 		}
 		this.offsetX = area.x;
 		this.offsetY = area.y;
@@ -258,11 +303,12 @@ class Display {
 	}
 
 	_drawTile(tileX, tileY, sprites) {
-		this.buffers.ground.clearTile(tileX, tileY);
+		for (let layer of this.layers) {
+			if (layer.clearMode === ClearMode.Tile) {
+				this.buffers[layer.name].clearTile(tileX, tileY)
+			}
+		}
 		this.buffers.fuzz.drawBehind(buffer => buffer.drawSprite(this.fuzzSprite, tileX, tileY));
-		this.buffers.base.clearTile(tileX, tileY);
-		this.buffers.main.clearTile(tileX, tileY);
-		this.buffers.ho.clearTile(tileX, tileY);
 		for (let i=sprites.length; i --> 0;) {
 			let name = sprites[i];
 			this._drawSprite(name, tileX, tileY);
@@ -322,11 +368,11 @@ class Display {
 		// let srcX = Math.max(0, Math.min(this.buffer.width, this.
 		this.outerCtx.imageSmoothingEnabled = false;
 		for (let layer of this.layers) {
-			let buffer = this.buffers[layer];
+			let buffer = this.buffers[layer.name];
 			this.outerCtx.drawImage(
 				buffer.canvas,
-				this.canvas.width / 2 - centerX,
-				this.canvas.height / 2 - centerY - (layer === "ho" ? tileSize : 0),
+				this.canvas.width / 2 - centerX + layer.offsetX() * tileSize,
+				this.canvas.height / 2 - centerY + layer.offsetY() * tileSize,
 				buffer.canvas.width * tileSize / buffer.resolution,
 				buffer.canvas.height * tileSize / buffer.resolution
 			);
