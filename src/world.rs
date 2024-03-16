@@ -75,9 +75,15 @@ impl World {
 			.map(|(creatureid, creature)| (creature.pos, creatureid))
 			.collect();
 		for (id, mut creature) in self.creatures.npcs_mut() {
-			let rind = random::randomize_u32(random::randomize_pos(id.0) + self.time.0 as u32);
-			if random::randomize_u32(rind + 543) % 10 == 0 {
-				let direction = *random::pick(random::randomize_u32(rind + 385), &[Direction::North, Direction::South, Direction::East, Direction::West]);
+			let home_pos = id.0;
+			let rind = random::randomize_u32(random::randomize_pos(home_pos) + self.time.0 as u32);
+			if random::percentage(rind + 543, 10) {
+				let directions = if creature.pos != home_pos && random::percentage(rind + 471, 10) {
+						creature.pos.directions_to(home_pos)
+					} else {
+						vec![Direction::North, Direction::South, Direction::East, Direction::West]
+					};
+				let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
 				let control = Plan::Move(direction);
 				creature.control(Control::Plan(control));
 			}

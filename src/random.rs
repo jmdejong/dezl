@@ -15,6 +15,10 @@ pub fn random_float(seed: u32) -> f32 {
 	(randomize_u32(seed) & 0xffff) as f32 / (0x10000 as f32)
 }
 
+pub fn percentage(seed: u32, percentage: u32) -> bool {
+	randomize_u32(seed) % 100 < percentage
+}
+
 #[inline]
 pub fn randomize_pos(pos: Pos) -> u32 {
 	randomize_u32(pos.x as u32 ^ randomize_u32(pos.y as u32))
