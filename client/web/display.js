@@ -162,7 +162,7 @@ class Layer {
 	constructor(name, opts) {
 		opts = opts || {};
 		this.name = name;
-		this.clear = opts.clearMode || ClearMode.Tile;
+		this.clear = opts.clear|| ClearMode.Tile;
 		this.offset = opts.offset || [0, 0];
 		this.trueScale = opts.trueScale || false;
 	}
@@ -189,11 +189,11 @@ class Display {
 		this.outerCtx = canvas.getContext("2d");
 		this.layers = [
 			new Layer("ground"),
-			new Layer("fuzz", {clear: false}),
+			new Layer("fuzz", {clear: ClearMode.None}),
 			new Layer("base"),
-			new Layer("borders", {clear: false}),
+			new Layer("borders", {clear: ClearMode.None}),
 			new Layer("main"),
-			new Layer("creatures", {clear: false, trueScale: true}),
+			new Layer("creatures", {clear: ClearMode.None, trueScale: true}),
 			new Layer("wol", {offset: [-1, 0]}),
 			new Layer("wom", {offset: [0, 0]}),
 			new Layer("wor", {offset: [1, 0]}),
@@ -304,7 +304,7 @@ class Display {
 
 	_drawTile(tileX, tileY, sprites) {
 		for (let layer of this.layers) {
-			if (layer.clearMode === ClearMode.Tile) {
+			if (layer.clearMode() === ClearMode.Tile) {
 				this.buffers[layer.name].clearTile(tileX, tileY)
 			}
 		}
