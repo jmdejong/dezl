@@ -88,7 +88,7 @@ class Client {
 		}
 		document.addEventListener("keyup", e => {
 			if (document.activeElement.classList.contains("captureinput")){
-				stop();
+				this.stop();
 				return;
 			} else {
 				let action = upKeyMap[e.code];
