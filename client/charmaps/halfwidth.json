@@ -97,6 +97,7 @@
 		"sawblade": ["q", 3],
 		"sawtable": ["P", 3],
 		"frog": ["f", 10],
+		"worm": ["w", 9],
 		" ": [" ", 7]
 	},
 	"writable": {

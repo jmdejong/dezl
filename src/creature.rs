@@ -1,6 +1,7 @@
 
 
 use serde::{Serialize, Deserialize};
+use enum_assoc::Assoc;
 use crate::{
 	sprite::Sprite,
 	Pos,
@@ -40,17 +41,17 @@ impl Creature {
 		}
 	}
 
-	pub fn spawn_npc(spawn_id: SpawnId, _npc: Npc) -> Self {
+	pub fn spawn_npc(spawn_id: SpawnId, npc: Npc) -> Self {
 		Self {
 			pos: spawn_id.0,
 			walk_cooldown: Duration(5),
-			sprite: Sprite::Frog,
+			sprite: npc.sprite(),
 			inventory: Inventory::load(Vec::new()),
 			heard_sounds: Vec::new(),
 			is_dead: false,
 			movement: None,
 			plan: None,
-			name: "Frog".to_string(),
+			name: npc.name().to_string(),
 		}
 	}
 	
@@ -162,7 +163,14 @@ pub struct Movement {
 pub struct SpawnId(pub Pos);
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Assoc, Serialize, Deserialize)]
+#[func(fn sprite(&self) -> Sprite)]
+#[func(fn name(&self) -> &str)]
 pub enum Npc {
-	Frog
+	#[assoc(sprite = Sprite::Frog)]
+	#[assoc(name = "Frog")]
+	Frog,
+	#[assoc(sprite = Sprite::Worm)]
+	#[assoc(name = "Worm")]
+	Worm
 }

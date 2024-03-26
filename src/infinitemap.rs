@@ -193,21 +193,24 @@ impl InfiniteMap {
 				)
 			}
 			Biome::Forest => {
-				*pick_weighted(rtime, &[
-					(*pick_weighted(rind, &[
-						(t!(Grass1), 10),
-						(t!(Grass2), 10),
-						(t!(Grass3), 10),
-						(t!(Moss), 40),
-						(t!(DeadLeaves), 40),
-						(t!(Dirt), 30),
-						(t!(Dirt, Structure::Item(Item::Stick)), 1)
+				*pick_weighted(rind, &[
+					(*pick_weighted(rtime, &[
+						(*pick_weighted(rind, &[
+							(t!(Grass1), 10),
+							(t!(Grass2), 10),
+							(t!(Grass3), 10),
+							(t!(Moss), 40),
+							(t!(DeadLeaves), 40),
+							(t!(Dirt), 30),
+							(t!(Dirt, Structure::Item(Item::Stick)), 1)
+						]), 100),
+						(t!(Grass1, Sapling), 3),
+						(t!(Dirt, YoungTree), 4),
+						(t!(Dirt, Tree), 13),
+						(t!(Dirt, OldTreeTinder), 1),
+						(t!(Dirt), 1)
 					]), 100),
-					(t!(Grass1, Sapling), 3),
-					(t!(Dirt, YoungTree), 4),
-					(t!(Dirt, Tree), 13),
-					(t!(Dirt, OldTreeTinder), 1),
-					(t!(Dirt), 1)
+					(t!(Dirt, Structure::Spawn(Npc::Worm)), 1),
 				])
 			}
 			Biome::Lake => {

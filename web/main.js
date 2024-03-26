@@ -34,6 +34,7 @@ function start(username, host) {
 			player: {x: 0, y: 0, layer: "creatures"},
 			sage: {x: 1, y: 0},
 			frog: {x: 3, y: 0, layer: "creatures"},
+			worm: {x: 4, y: 0, layer: "creatures"},
 			worktable: {x: 6, y: 0},
 			altar: {x: 7, y: 0},
 			grass1: {x: 0, y: 1, layer: "ground"},
