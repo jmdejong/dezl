@@ -170,8 +170,8 @@ pub enum Item {
 mod tests {
 	use super::*;
 	#[test]
-	fn hands_has_take_action() {
-		assert_eq!(Item::Hands.actions(), vec![Action::take()]);
+	fn stone_has_smash_action() {
+		assert_eq!(Item::Stone.actions(), vec![Action::interact(Smash, 1, true)]);
 	}
 	
 }

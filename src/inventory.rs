@@ -89,21 +89,16 @@ pub type InventorySave = Vec<(Item, usize)>;
 #[cfg(test)]
 mod tests {
 	use super::*;
-	#[test]
-	fn has_default_entries() {
-		let inv = Inventory::load(vec![]);
-		assert_eq!(inv.get_item(0), Item::Eyes);
-		assert_eq!(inv.get_item(1), Item::Hands);
-	}
+
 	#[test]
 	fn has_item() {
 		let inv = Inventory::load(vec![(Item::Stone, 1)]);
-		assert_eq!(inv.get_item(2), Item::Stone);
+		assert_eq!(inv.get_item(0), Item::Stone);
 	}
 	#[test]
 	fn moves_item() {
 		let mut inv = Inventory::load(vec![(Item::Stone, 1), (Item::Stick, 1), (Item::Ash, 1), (Item::Log, 1), (Item::Hoe, 1)]);
-		inv.move_item(3, 5);
+		inv.move_item(1, 3);
 		let expected = Inventory::load(vec![(Item::Stone, 1), (Item::Ash, 1), (Item::Log, 1), (Item::Stick, 1), (Item::Hoe, 1)]);
 		assert_eq!(inv, expected);
 
