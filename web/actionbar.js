@@ -4,11 +4,18 @@ class ActionBar {
 
 	constructor() {
 		this.actions = [
-			["<inspect>", null, direction => {return {inspect: direction}}],
-			["<take>", null, direction => {return {take: direction}}]
+			{name: "<inspect>", message: direction => ({inspect: direction})},
+			{name: "<take>", message: direction => ({take: direction})}
 		];
 		this.selector = 0;
 		this.items = [];
+		let actionTable = document.getElementById("interactions");
+		for (let i in this.actions) {
+			let action = this.actions[i];
+			let row = this._buildRow(i, action.name, null);
+			actionTable.appendChild(row);
+		}
+		this.select(0);
 	}
 
 	setInventory(items) {
@@ -20,38 +27,39 @@ class ActionBar {
 			row.remove();
 		});
 
-		let entries = this.actions.concat(items);
-
-		for (let i=0; i<entries.length; ++i) {
-			let item = entries[i];
-			let name = item[0];
-			let quantity = item[1];
-			let row = document.createElement("li");
-			row.onclick = () => this.select(i | 0);
-			row.className = "inv-row";
-
-			let nm = document.createElement("span");
-			nm.className = "inventory-name";
-			nm.innerText = name;
-			row.appendChild(nm);
-
-			let am = document.createElement("span");
-			am.className = "inventory-amount";
-			if (quantity !== null && quantity !== undefined) {
-				am.innerText = quantity;
-			}
-			row.appendChild(am);
+		for (let i in items) {
+			let item = items[i];
+			let row = this._buildRow(i, item[0], item[1]);
 
 			table.appendChild(row);
 		}
 		this.select(Math.min(this.selector, entries.length - 1));
 	}
 
+	_buildRow(index, name, quantity) {
+		let row = document.createElement("li");
+		row.onclick = () => this.select(index | 0);
+		row.className = "inv-row selectable-row";
+
+		let nm = document.createElement("span");
+		nm.className = "inventory-name";
+		nm.innerText = name;
+		row.appendChild(nm);
+
+		let am = document.createElement("span");
+		am.className = "inventory-amount";
+		if (quantity !== null && quantity !== undefined) {
+			am.innerText = quantity;
+		}
+		row.appendChild(am);
+		return row;
+	}
+
 	select(idx) {
 		this.selector = idx;
-		let table = document.getElementById("inventory");
-		for (let i=0; i<table.children.length; ++i) {
-			let row = table.children[i];
+		let items = document.getElementsByClassName("selectable-row");
+		for (let i=0; i<items.length; ++i) {
+			let row = items.item(i);
 			row.classList.remove("inv-selected");
 			if (i == this.selector) {
 				row.classList.add("inv-selected");
@@ -70,7 +78,7 @@ class ActionBar {
 
 	selectedAction(direction) {
 		if (this.selector < this.actions.length) {
-			return this.actions[this.selector][2](direction);
+			return this.actions[this.selector].message(direction);
 		} else {
 			return {use: [this.selector - this.actions.length, direction]};
 		}

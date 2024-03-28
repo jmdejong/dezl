@@ -64,18 +64,30 @@ canvas {
 	padding: 2px;
 }
 
-.inventory {
-/* 	flex: right; */
+.actionbar {
 	border: 2px solid #AAA;
-	height: 240px;
 	width: 200px;
-	overflow-y: scroll;
-	font: monospace;
-	display: block;
 	background-color: #fffc;
-/* 	table-layout: fixed; */
+	display: block;
+	margin: 10px 0px;
+}
+.actions {
+	border: 1px solid #AAA;
 	list-style: none;
 	padding: 0;
+	font: monospace;
+	margin: 0;
+}
+
+.interactions {
+	margin-bottom: 0px;
+}
+.inventory {
+
+/* 	flex: right; */
+	height: 240px;
+	overflow-y: scroll;
+/* 	table-layout: fixed; */
 /* 	position: relative; */
 }
 .inventory-amount {
@@ -94,9 +106,12 @@ canvas {
 	padding-right: 15px;
 	padding-left: 5px;
 }
+.inv-row:not(.inv-selected) {
+	border: 2px solid #fff0;
+}
 
 .inv-selected {
-	border: 3px solid #886;
+	border: 2px solid #886;
 	background-color: #ccbe;
 }
 
