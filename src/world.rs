@@ -1,5 +1,6 @@
 
 use std::collections::{HashMap};
+use std::cell::Ref;
 use serde::{Serialize, Deserialize};
 
 use crate::{
@@ -9,7 +10,7 @@ use crate::{
 	pos::{Pos, Direction},
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage, SoundType},
 	timestamp::{Timestamp},
-	creature::{PlayerSave, CreatureView},
+	creature::{Creature, PlayerSave, CreatureView},
 	creatures::{Creatures, CreatureId, PlayerNotFound, PlayerAlreadyExists, CreatureNotFound},
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
@@ -69,11 +70,9 @@ impl World {
 		self.creatures.list_players()
 	}
 	
-	
+
 	fn update_creatures(&mut self) {
-		let mut creature_map: HashMap<Pos, CreatureId> = self.creatures.all()
-			.map(|(creatureid, creature)| (creature.pos, creatureid))
-			.collect();
+		let mut creature_map = CreatureMap::new(self.creatures.all());
 		for (id, mut creature) in self.creatures.npcs_mut() {
 			let home_pos = id.0;
 			let rind = random::randomize_u32(random::randomize_pos(home_pos) + self.time.0 as u32);
@@ -113,8 +112,8 @@ impl World {
 					let tile = self.ground.cell(pos);
 					let mut text = tile.inspect();
 					if let Some(other) = creature_map.get(&pos) {
-						if other != &id {
-							let name = &self.creatures.get_creature(other).unwrap().name;
+						if other != id {
+							let name = &self.creatures.get_creature(&other).unwrap().name;
 							text = format!("{} | {}", text, name);
 						}
 					}
@@ -140,15 +139,12 @@ impl World {
 		}
 	}
 
-	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut HashMap<Pos, CreatureId>) -> Result<(), CreatureNotFound> {
+	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut CreatureMap) -> Result<(), CreatureNotFound> {
 		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let newpos = creature.pos + direction;
 		let tile = self.ground.cell(newpos);
-		if !tile.blocking() && !creature_map.contains_key(&newpos) {
-			if creature_map.get(&creature.pos) == Some(id){
-				creature_map.remove(&creature.pos);
-			}
-			creature_map.insert(newpos, *id);
+		if !tile.blocking() && !creature_map.get(&newpos).is_some() {
+			creature_map.move_creature(*id, &creature.pos, newpos);
 			creature.move_to(newpos, self.time);
 		}
 		Ok(())
@@ -317,3 +313,28 @@ pub struct WorldSave {
 	pub mapdef: MapDef,
 }
 
+#[derive(Debug)]
+struct CreatureMap {
+	map: HashMap<Pos, CreatureId>
+}
+
+impl CreatureMap {
+	pub fn new<'a>(creatures: impl Iterator<Item=(CreatureId, Ref<'a, Creature>)>) -> Self {
+		Self {
+			map: creatures
+				.map(|(creatureid, creature)| (creature.pos, creatureid))
+				.collect()
+		}
+	}
+
+	pub fn get(&self, pos: &Pos) -> Option<CreatureId> {
+		self.map.get(pos).copied()
+	}
+
+	pub fn move_creature(&mut self, id: CreatureId, from: &Pos, to: Pos) {
+		if self.map.get(from).is_some_and(|from_id| &id == from_id) {
+			self.map.remove(from);
+		}
+		self.map.insert(to, id);
+	}
+}
