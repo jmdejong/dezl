@@ -17,6 +17,7 @@ pub enum Plan {
 	Use(usize, Option<Direction>),
 	Take(Option<Direction>),
 	Inspect(Option<Direction>),
+	Fight(Option<Direction>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

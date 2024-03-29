@@ -112,8 +112,8 @@ impl World {
 					let tile = self.ground.cell(pos);
 					let mut text = tile.inspect();
 					for other in creature_map.get(&pos) {
-						if other != id {
-							let name = &self.creatures.get_creature(&other).unwrap().name;
+						if other.id != id {
+							let name = &self.creatures.get_creature(&other.id).unwrap().name;
 							text = format!("{} | {}", text, name);
 						}
 					}
@@ -129,6 +129,13 @@ impl World {
 				Plan::Use(index, direction) => {
 					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
 					let _ = self.interact_creature(&id, direction, item);
+				}
+				Plan::Fight(direction) => {
+					let creature = self.creatures.get_creature_mut(&id).unwrap();
+					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+					if let Some(opponent) = creature_map.get(&pos).iter().filter(|o| creature.faction.is_enemy(o.faction)).next() {
+						self.creatures.get_creature_mut(&opponent.id).unwrap().kill();
+					}
 				}
 				Plan::Suicide => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
@@ -328,8 +335,8 @@ impl CreatureMap {
 		map
 	}
 
-	pub fn get(&self, pos: &Pos) -> Vec<CreatureId> {
-		self.map.get(pos).map(|c| c.keys().copied().collect()).unwrap_or_default()
+	pub fn get(&self, pos: &Pos) -> Vec<CreatureTile> {
+		self.map.get(pos).map(|c| c.values().copied().collect()).unwrap_or_default()
 	}
 
 	pub fn blocking(&self, pos: &Pos, creature: &Creature) -> bool {
@@ -350,18 +357,19 @@ impl CreatureMap {
 	}
 
 	fn insert(&mut self, pos: Pos, id: CreatureId, creature: &Creature) {
-		self.map.entry(pos).or_default().insert(id, CreatureTile::new(creature));
+		self.map.entry(pos).or_default().insert(id, CreatureTile::new(id, creature));
 	}
 }
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct CreatureTile {
+	pub id: CreatureId,
 	pub faction: Faction
 }
 
 impl CreatureTile {
-	fn new(creature: &Creature) -> Self {
-		Self {faction: creature.faction}
+	fn new(id: CreatureId, creature: &Creature) -> Self {
+		Self {id, faction: creature.faction}
 	}
 }

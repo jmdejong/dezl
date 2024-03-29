@@ -19,7 +19,7 @@ pub struct Creature {
 	sprite: Sprite,
 	pub inventory: Inventory,
 	pub heard_sounds: Vec<(SoundType, String)>,
-	is_dead: bool,
+	pub is_dead: bool,
 	movement: Option<Movement>,
 	pub plan: Option<Plan>,
 	pub name: String,

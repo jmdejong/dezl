@@ -5,7 +5,8 @@ class ActionBar {
 	constructor() {
 		this.actions = [
 			{name: "<inspect>", message: direction => ({inspect: direction})},
-			{name: "<take>", message: direction => ({take: direction})}
+			{name: "<take>", message: direction => ({take: direction})},
+			{name: "<fight>", message: direction => ({fight: direction})}
 		];
 		this.selector = 0;
 		this.items = [];
