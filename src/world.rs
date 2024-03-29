@@ -10,7 +10,7 @@ use crate::{
 	pos::{Pos, Direction},
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage, SoundType},
 	timestamp::{Timestamp},
-	creature::{Creature, PlayerSave, CreatureView},
+	creature::{Creature, PlayerSave, CreatureView, Faction},
 	creatures::{Creatures, CreatureId, PlayerNotFound, PlayerAlreadyExists, CreatureNotFound},
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
@@ -111,7 +111,7 @@ impl World {
 					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 					let tile = self.ground.cell(pos);
 					let mut text = tile.inspect();
-					if let Some(other) = creature_map.get(&pos) {
+					for other in creature_map.get(&pos) {
 						if other != id {
 							let name = &self.creatures.get_creature(&other).unwrap().name;
 							text = format!("{} | {}", text, name);
@@ -143,8 +143,8 @@ impl World {
 		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let newpos = creature.pos + direction;
 		let tile = self.ground.cell(newpos);
-		if !tile.blocking() && !creature_map.get(&newpos).is_some() {
-			creature_map.move_creature(*id, &creature.pos, newpos);
+		if !tile.blocking() && !creature_map.blocking(&newpos, &creature) {
+			creature_map.move_creature(*id, &creature, &creature.pos, newpos);
 			creature.move_to(newpos, self.time);
 		}
 		Ok(())
@@ -315,26 +315,53 @@ pub struct WorldSave {
 
 #[derive(Debug)]
 struct CreatureMap {
-	map: HashMap<Pos, CreatureId>
+	map: HashMap<Pos, HashMap<CreatureId, CreatureTile>>
 }
 
 impl CreatureMap {
+
 	pub fn new<'a>(creatures: impl Iterator<Item=(CreatureId, Ref<'a, Creature>)>) -> Self {
-		Self {
-			map: creatures
-				.map(|(creatureid, creature)| (creature.pos, creatureid))
-				.collect()
+		let mut map = Self { map: HashMap::new() };
+		for (id, creature) in creatures {
+			map.insert(creature.pos, id, &creature);
 		}
+		map
 	}
 
-	pub fn get(&self, pos: &Pos) -> Option<CreatureId> {
-		self.map.get(pos).copied()
+	pub fn get(&self, pos: &Pos) -> Vec<CreatureId> {
+		self.map.get(pos).map(|c| c.keys().copied().collect()).unwrap_or_default()
 	}
 
-	pub fn move_creature(&mut self, id: CreatureId, from: &Pos, to: Pos) {
-		if self.map.get(from).is_some_and(|from_id| &id == from_id) {
-			self.map.remove(from);
+	pub fn blocking(&self, pos: &Pos, creature: &Creature) -> bool {
+		self.map.get(pos)
+			.map(|creatures| creatures.values().any(|c| c.faction.is_enemy(creature.faction)))
+			.unwrap_or(false)
+	}
+
+
+	pub fn move_creature(&mut self, id: CreatureId, creature: &Creature, from: &Pos, to: Pos) {
+		if let Some(creatures) = self.map.get_mut(from) {
+			creatures.remove(&id);
+			if creatures.is_empty() {
+				self.map.remove(from);
+			}
 		}
-		self.map.insert(to, id);
+		self.insert(to, id, creature);
+	}
+
+	fn insert(&mut self, pos: Pos, id: CreatureId, creature: &Creature) {
+		self.map.entry(pos).or_default().insert(id, CreatureTile::new(creature));
+	}
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CreatureTile {
+	pub faction: Faction
+}
+
+impl CreatureTile {
+	fn new(creature: &Creature) -> Self {
+		Self {faction: creature.faction}
 	}
 }

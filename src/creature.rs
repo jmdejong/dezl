@@ -23,6 +23,7 @@ pub struct Creature {
 	movement: Option<Movement>,
 	pub plan: Option<Plan>,
 	pub name: String,
+	pub faction: Faction,
 }
 
 impl Creature {
@@ -38,6 +39,7 @@ impl Creature {
 			movement: None,
 			plan: None,
 			name: saved.name,
+			faction: Faction::Player
 		}
 	}
 
@@ -52,6 +54,7 @@ impl Creature {
 			movement: None,
 			plan: None,
 			name: npc.name().to_string(),
+			faction: npc.faction()
 		}
 	}
 	
@@ -147,6 +150,22 @@ pub struct CreatureView {
 	pub movement: Option<Movement>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Faction {
+	Player,
+	Neutral,
+	Evil
+}
+
+impl Faction {
+	pub fn is_enemy(&self, other: Faction) -> bool {
+		matches!(
+			(self, other),
+			(Faction::Player, Faction::Evil) | (Faction::Evil, Faction::Player)
+		)
+	}
+}
+
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Movement {
@@ -166,11 +185,13 @@ pub struct SpawnId(pub Pos);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Assoc, Serialize, Deserialize)]
 #[func(fn sprite(&self) -> Sprite)]
 #[func(fn name(&self) -> &str)]
+#[func(fn faction(&self) -> Faction {Faction::Neutral})]
 pub enum Npc {
 	#[assoc(sprite = Sprite::Frog)]
 	#[assoc(name = "Frog")]
 	Frog,
 	#[assoc(sprite = Sprite::Worm)]
+	#[assoc(faction = Faction::Evil)]
 	#[assoc(name = "Worm")]
 	Worm
 }
