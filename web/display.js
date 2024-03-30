@@ -84,8 +84,8 @@ class DrawBuffer {
 
 
 	drawSprite(sprite, x, y) {
-		x = (x - this.area.x) * this.resolution;
-		y = (y - this.area.y) * this.resolution;
+		x = (x - this.area.x) * this.resolution |0;
+		y = (y - this.area.y) * this.resolution |0;
 		this.ctx.drawImage(
 			sprite.image,
 			sprite.x,
