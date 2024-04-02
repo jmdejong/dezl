@@ -134,7 +134,8 @@ impl World {
 					let creature = self.creatures.get_creature_mut(&id).unwrap();
 					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 					if let Some(opponent) = creature_map.get(&pos).iter().filter(|o| creature.faction.is_enemy(o.faction)).next() {
-						self.creatures.get_creature_mut(&opponent.id).unwrap().kill();
+						let mut opponent = self.creatures.get_creature_mut(&opponent.id).unwrap();
+						opponent.health -= creature.attack;
 					}
 				}
 				Plan::Suicide => {
@@ -142,6 +143,11 @@ impl World {
 					creature.kill();
 				}
 				Plan::Stop => {}
+			}
+		}
+		for (_id, mut creature) in self.creatures.all_mut() {
+			if creature.health <= 0 {
+				creature.kill()
 			}
 		}
 	}

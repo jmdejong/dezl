@@ -24,6 +24,9 @@ pub struct Creature {
 	pub plan: Option<Plan>,
 	pub name: String,
 	pub faction: Faction,
+	pub attack: i32,
+	pub health: i32,
+	pub max_health: i32,
 }
 
 impl Creature {
@@ -39,7 +42,10 @@ impl Creature {
 			movement: None,
 			plan: None,
 			name: saved.name,
-			faction: Faction::Player
+			faction: Faction::Player,
+			health: saved.health,
+			max_health: 100,
+			attack: 10,
 		}
 	}
 
@@ -54,7 +60,10 @@ impl Creature {
 			movement: None,
 			plan: None,
 			name: npc.name().to_string(),
-			faction: npc.faction()
+			faction: npc.faction(),
+			health: npc.health(),
+			max_health: npc.health(),
+			attack: npc.attack()
 		}
 	}
 	
@@ -66,7 +75,8 @@ impl Creature {
 		PlayerSave {
 			name: self.name.clone(),
 			pos: self.pos,
-			inventory: self.inventory.save()
+			inventory: self.inventory.save(),
+			health: self.health,
 		}
 	}
 
@@ -128,14 +138,18 @@ pub struct PlayerSave {
 	pub name: String,
 	pub pos: Pos,
 	pub inventory: InventorySave,
+	#[serde(default="one")]
+	pub health: i32,
 }
+fn one() -> i32 {1}
 
 impl PlayerSave {
 	pub fn new(name: String, pos: Pos) -> Self {
 		Self {
 			name,
 			pos,
-			inventory: Vec::new()
+			inventory: Vec::new(),
+			health: 100,
 		}
 	}
 }
@@ -186,12 +200,16 @@ pub struct SpawnId(pub Pos);
 #[func(fn sprite(&self) -> Sprite)]
 #[func(fn name(&self) -> &str)]
 #[func(fn faction(&self) -> Faction {Faction::Neutral})]
+#[func(fn health(&self) -> i32 {1})]
+#[func(fn attack(&self) -> i32 {0})]
 pub enum Npc {
-	#[assoc(sprite = Sprite::Frog)]
 	#[assoc(name = "Frog")]
+	#[assoc(sprite = Sprite::Frog)]
 	Frog,
+	#[assoc(name = "Worm")]
 	#[assoc(sprite = Sprite::Worm)]
 	#[assoc(faction = Faction::Evil)]
-	#[assoc(name = "Worm")]
+	#[assoc(health = 20)]
+	#[assoc(attack = 6)]
 	Worm
 }
