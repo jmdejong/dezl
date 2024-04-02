@@ -39,6 +39,10 @@ impl Inventory {
 			items: saved,
 		}
 	}
+
+	pub fn empty() -> Self {
+		Self { items: Vec::new() }
+	}
 	
 	fn count(&self) -> usize {
 		self.items.len()

@@ -72,6 +72,11 @@ impl World {
 	
 
 	fn update_creatures(&mut self) {
+
+		for (_, mut creature) in self.creatures.all_mut() {
+			creature.autoheal_tick(self.time);
+		}
+
 		let mut creature_map = CreatureMap::new(self.creatures.all());
 		for (id, mut creature) in self.creatures.npcs_mut() {
 			let home_pos = id.0;
@@ -135,19 +140,10 @@ impl World {
 					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
 					if let Some(opponent) = creature_map.get(&pos).iter().filter(|o| creature.faction.is_enemy(o.faction)).next() {
 						let mut opponent = self.creatures.get_creature_mut(&opponent.id).unwrap();
-						opponent.health -= creature.attack;
+						opponent.damage(creature.attack);
 					}
 				}
-				Plan::Suicide => {
-					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					creature.kill();
-				}
 				Plan::Stop => {}
-			}
-		}
-		for (_id, mut creature) in self.creatures.all_mut() {
-			if creature.health <= 0 {
-				creature.kill()
 			}
 		}
 	}

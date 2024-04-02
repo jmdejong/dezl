@@ -13,7 +13,6 @@ pub enum Plan {
 	Move(Direction),
 	Movement(Direction),
 	Stop,
-	Suicide,
 	Use(usize, Option<Direction>),
 	Take(Option<Direction>),
 	Inspect(Option<Direction>),

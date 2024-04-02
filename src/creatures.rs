@@ -139,7 +139,7 @@ impl Creatures {
 	}
 
 	pub fn despawn(&mut self, loaded_areas: &LoadedAreas) {
-		self.spawned_creatures.retain(|_spawn_id, body| !body.borrow().is_dead && loaded_areas.is_loaded(body.borrow().pos));
+		self.spawned_creatures.retain(|_spawn_id, body| !body.borrow().is_dead() && loaded_areas.is_loaded(body.borrow().pos));
 	}
 }
 

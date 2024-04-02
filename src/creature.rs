@@ -19,14 +19,14 @@ pub struct Creature {
 	sprite: Sprite,
 	pub inventory: Inventory,
 	pub heard_sounds: Vec<(SoundType, String)>,
-	pub is_dead: bool,
 	movement: Option<Movement>,
 	pub plan: Option<Plan>,
 	pub name: String,
 	pub faction: Faction,
 	pub attack: i32,
-	pub health: i32,
-	pub max_health: i32,
+	health: i32,
+	max_health: i32,
+	autoheal: Option<AutoHeal>,
 }
 
 impl Creature {
@@ -38,7 +38,6 @@ impl Creature {
 			sprite: Sprite::PlayerDefault,
 			inventory: Inventory::load(saved.inventory),
 			heard_sounds: Vec::new(),
-			is_dead: false,
 			movement: None,
 			plan: None,
 			name: saved.name,
@@ -46,6 +45,7 @@ impl Creature {
 			health: saved.health,
 			max_health: 100,
 			attack: 5,
+			autoheal: Some(AutoHeal { cooldown: Duration(600), amount: 1, next: None }),
 		}
 	}
 
@@ -54,21 +54,25 @@ impl Creature {
 			pos: spawn_id.0,
 			walk_cooldown: Duration(5),
 			sprite: npc.sprite(),
-			inventory: Inventory::load(Vec::new()),
+			inventory: Inventory::empty(),
 			heard_sounds: Vec::new(),
-			is_dead: false,
 			movement: None,
 			plan: None,
 			name: npc.name().to_string(),
 			faction: npc.faction(),
 			health: npc.health(),
 			max_health: npc.health(),
-			attack: npc.attack()
+			attack: npc.attack(),
+			autoheal: None
 		}
 	}
 	
-	pub fn kill(&mut self) {
-		self.is_dead = true;
+	pub fn is_dead(&self) -> bool {
+		self.health <= 0
+	}
+
+	pub fn damage(&mut self, amount: i32) {
+		self.health -= amount;
 	}
 	
 	pub fn save(&self) -> PlayerSave {
@@ -85,7 +89,7 @@ impl Creature {
 			pos: self.pos,
 			sprite: self.sprite,
 			movement: self.movement.clone(),
-			health: self.health,
+			health: self.health.clamp(0, self.max_health),
 			max_health: self.max_health,
 		}
 	}
@@ -132,6 +136,18 @@ impl Creature {
 			self.plan = None;
 		}
 		self.heard_sounds = Vec::new()
+	}
+
+	pub fn autoheal_tick(&mut self, now: Timestamp) {
+		if let Some(autoheal) = &mut self.autoheal {
+			if autoheal.next.is_some_and(|next| now >= next) {
+				self.health = (self.health + autoheal.amount).min(self.max_health).max(self.health);
+				autoheal.next = None;
+			}
+			if autoheal.next.is_none() && self.health < self.max_health {
+				autoheal.next = Some(now + autoheal.cooldown);
+			}
+		}
 	}
 }
 
@@ -219,3 +235,12 @@ pub enum Npc {
 	#[assoc(attack = 6)]
 	Worm
 }
+
+
+#[derive(Debug, Clone)]
+struct AutoHeal {
+	cooldown: Duration,
+	amount: i32,
+	next: Option<Timestamp>
+}
+
