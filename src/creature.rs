@@ -45,7 +45,7 @@ impl Creature {
 			faction: Faction::Player,
 			health: saved.health,
 			max_health: 100,
-			attack: 10,
+			attack: 5,
 		}
 	}
 
@@ -85,6 +85,8 @@ impl Creature {
 			pos: self.pos,
 			sprite: self.sprite,
 			movement: self.movement.clone(),
+			health: self.health,
+			max_health: self.max_health,
 		}
 	}
 
@@ -162,6 +164,10 @@ pub struct CreatureView {
 	pub pos: Pos,
 	#[serde(skip_serializing_if = "Option::is_none", rename="m")]
 	pub movement: Option<Movement>,
+	#[serde(rename = "h")]
+	pub health: i32,
+	#[serde(rename = "hh")]
+	pub max_health: i32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,7 +215,7 @@ pub enum Npc {
 	#[assoc(name = "Worm")]
 	#[assoc(sprite = Sprite::Worm)]
 	#[assoc(faction = Faction::Evil)]
-	#[assoc(health = 20)]
+	#[assoc(health = 12)]
 	#[assoc(attack = 6)]
 	Worm
 }

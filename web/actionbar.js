@@ -34,7 +34,7 @@ class ActionBar {
 
 			table.appendChild(row);
 		}
-		this.select(Math.min(this.selector, entries.length - 1));
+		this.select(Math.min(this.selector, this.actions.length + this.items.length - 1));
 	}
 
 	_buildRow(index, name, quantity) {

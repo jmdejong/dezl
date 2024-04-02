@@ -114,9 +114,13 @@ class DrawBuffer {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 	}
 
-	fillTile(color, x, y) {
+	fillRect(color, x, y, width, height) {
 		this.ctx.fillStyle = color;
-		this.ctx.fillRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, this.resolution, this.resolution);
+		this.ctx.fillRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width * this.resolution, height * this.resolution);
+	}
+
+	fillTile(color, x, y) {
+		this.drawRect(color, x, y, 1, 1);
 	}
 
 	clearTile(x, y) {
@@ -194,6 +198,7 @@ class Display {
 			new Layer("borders", {clear: ClearMode.None}),
 			new Layer("main"),
 			new Layer("creatures", {clear: ClearMode.None, trueScale: true}),
+			new Layer("effect", {clear: ClearMode.None, trueScale: true}),
 			new Layer("wol", {offset: [-1, 0]}),
 			new Layer("wom", {offset: [0, 0]}),
 			new Layer("wor", {offset: [1, 0]}),
@@ -285,9 +290,11 @@ class Display {
 	}
 
 	drawDynamics(entities) {
-		this.buffers.creatures.clear()
+		this.buffers.creatures.clear();
+		this.buffers.effect.clear();
 		for (let entity of entities) {
 			this._drawSprite(entity.sprite, entity.x, entity.y);
+			this._drawHealthBar(entity.health, entity.maxHealth, entity.x, entity.y);
 		}
 	}
 
@@ -300,6 +307,17 @@ class Display {
 		} else {
 			this.buffers.base.fillTile(this._getColor(name), x, y);
 		}
+	}
+
+	_drawHealthBar(health, maxHealth, x, y) {
+		if (health === maxHealth) {
+			return;
+		}
+		let ratio = health / maxHealth;
+		let height = 1/8;
+		let offset = 1/8;
+		this.buffers.effect.fillRect("#0f0", x, y-height-offset, ratio, height);
+		this.buffers.effect.fillRect("#c00", x+ratio, y-height-offset, 1-ratio, height);
 	}
 
 	_drawTile(tileX, tileY, sprites) {
@@ -365,7 +383,6 @@ class Display {
 		let tileSize = this.tileSize * this.scale;
 		let centerX = (this.centerX - this.offsetX) * tileSize;
 		let centerY = (this.centerY - this.offsetY) * tileSize;
-		// let srcX = Math.max(0, Math.min(this.buffer.width, this.
 		this.outerCtx.imageSmoothingEnabled = false;
 		for (let layer of this.layers) {
 			let buffer = this.buffers[layer.name];

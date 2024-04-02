@@ -34,7 +34,7 @@ class Model {
 				x += (entity.m.f[0] - x) * (1 - progress);
 				y += (entity.m.f[1] - y) * (1 - progress);
 			}
-			return {x: x, y: y, sprite: entity.s};
+			return {x: x, y: y, sprite: entity.s, health: entity.h, maxHealth: entity.hh};
 		});
 	}
 
