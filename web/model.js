@@ -28,11 +28,11 @@ class Model {
 	currentEntities() {
 		return Object.entries(this.entities).map(([id, entity]) => {
 			let [x, y] = entity.p;
-			if (entity.m && this.tick < entity.m.e) {
-				let start = entity.m.s;
-				let progress = (this.tick - start) / (entity.m.e - start);
-				x += (entity.m.f[0] - x) * (1 - progress);
-				y += (entity.m.f[1] - y) * (1 - progress);
+			if (entity.a && entity.a.M && this.tick < entity.a.e) {
+				let start = entity.a.s;
+				let progress = (this.tick - start) / (entity.a.e - start);
+				x += (entity.a.M[0] - x) * (1 - progress);
+				y += (entity.a.M[1] - y) * (1 - progress);
 			}
 			return {x: x, y: y, sprite: entity.s, health: entity.h, maxHealth: entity.hh};
 		});
@@ -41,11 +41,11 @@ class Model {
 
 	currentCenter() {
 		let [cx, cy] = this.position.pos;
-		if (this.position.movement && this.tick < this.position.movement.e) {
-			let start = this.position.movement.s;
-			let progress = (this.tick - start) / (this.position.movement.e - start);
-			cx += (this.position.movement.f[0] - cx) * (1-progress)
-			cy += (this.position.movement.f[1] - cy) * (1-progress)
+		if (this.position.activity && this.position.activity.M && this.tick < this.position.activity.e) {
+			let start = this.position.activity.s;
+			let progress = (this.tick - start) / (this.position.activity.e - start);
+			cx += (this.position.activity.M[0] - cx) * (1-progress)
+			cy += (this.position.activity.M[1] - cy) * (1-progress)
 		}
 		return [cx, cy];
 	}

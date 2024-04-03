@@ -7,9 +7,12 @@ use crate::{
 	PlayerId,
 	controls::{Control},
 	pos::Pos,
-	creature::{Creature, PlayerSave, SpawnId, Npc},
+	creature::{Creature, PlayerSave, Npc},
 	loadedareas::LoadedAreas,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct SpawnId(pub Pos);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum CreatureId {
@@ -56,7 +59,7 @@ impl Creatures {
 		if self.players.contains_key(playerid){
 			return Err(PlayerAlreadyExists(*playerid));
 		}
-		let body = Creature::load_player(saved);
+		let body = Creature::load_player(CreatureId::Player(*playerid), saved);
 		self.players.insert(
 			*playerid,
 			Player::new(body)
@@ -92,26 +95,18 @@ impl Creatures {
 		Some(self.players.get(playerid)?.body.borrow_mut())
 	}
 
-	pub fn npcs_mut(&self) -> impl Iterator<Item=(&SpawnId, RefMut<Creature>)> {
-		self.spawned_creatures.iter()
-			.map(|(spawn_id, creature)| (spawn_id, creature.borrow_mut()))
+	fn iter_cell(&self) -> impl Iterator<Item=&RefCell<Creature>> {
+		self.players.values()
+			.map(|player| &player.body)
+			.chain(self.spawned_creatures.values())
 	}
 
-	fn iter_cell(&self) -> impl Iterator<Item=(CreatureId, &RefCell<Creature>)> {
-		self.players.iter()
-			.map(|(player_id, player)| (CreatureId::Player(*player_id), &player.body))
-			.chain(
-				self.spawned_creatures.iter()
-					.map(|(spawn_id, creature)| (CreatureId::Spawned(*spawn_id), creature))
-			 )
+	pub fn all_mut(&self) -> impl Iterator<Item=RefMut<Creature>> {
+		self.iter_cell().map(|body| body.borrow_mut())
 	}
 
-	pub fn all_mut(&self) -> impl Iterator<Item=(CreatureId, RefMut<Creature>)> {
-		self.iter_cell().map(|(id, body)| (id, body.borrow_mut()))
-	}
-
-	pub fn all(&self) -> impl Iterator<Item=(CreatureId, Ref<Creature>)> {
-		self.iter_cell().map(|(id, body)| (id, body.borrow()))
+	pub fn all(&self) -> impl Iterator<Item=Ref<Creature>> {
+		self.iter_cell().map(|body| body.borrow())
 	}
 
 	fn creature_cell(&self, id: &CreatureId) -> Option<&RefCell<Creature>> {
@@ -134,7 +129,7 @@ impl Creatures {
 			return;
 		}
 		// println!("spawning {:?} npc at {:?}", npc, spawn_id);
-		let body = Creature::spawn_npc(id, npc);
+		let body = Creature::spawn_npc(CreatureId::Spawned(id), id.0, npc);
 		self.spawned_creatures.insert(id, RefCell::new(body));
 	}
 

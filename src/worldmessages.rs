@@ -7,7 +7,7 @@ use crate::{
 	Sprite,
 	PlayerId,
 	timestamp::Timestamp,
-	creature::{CreatureView, Movement},
+	creature::{CreatureView, Activity},
 	creatures::CreatureId,
 	map::SectionView,
 };
@@ -77,7 +77,7 @@ pub type DynamicMessage = HashMap<CreatureId, CreatureView>;
 pub struct PositionMessage {
 	pub pos: Pos,
 	#[serde(skip_serializing_if = "Option::is_none")]
-	pub movement: Option<Movement>,
+	pub activity: Option<Activity>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]

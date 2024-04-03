@@ -1,5 +1,5 @@
 
-
+use std::cell::RefMut;
 use serde::{Serialize, Deserialize};
 use enum_assoc::Assoc;
 use crate::{
@@ -10,16 +10,19 @@ use crate::{
 	worldmessages::SoundType,
 	timestamp::Timestamp,
 	controls::{Control, Plan, DirectChange},
+	creatures::CreatureId,
 };
 
 #[derive(Debug, Clone)]
 pub struct Creature {
+	pub id: CreatureId,
 	pub pos: Pos,
 	walk_cooldown: Duration,
+	attack_cooldown: Duration,
 	sprite: Sprite,
 	pub inventory: Inventory,
 	pub heard_sounds: Vec<(SoundType, String)>,
-	movement: Option<Movement>,
+	activity: Option<Activity>,
 	pub plan: Option<Plan>,
 	pub name: String,
 	pub faction: Faction,
@@ -27,18 +30,25 @@ pub struct Creature {
 	health: i32,
 	max_health: i32,
 	autoheal: Option<AutoHeal>,
+	pub mind: Mind,
+	pub target: Option<CreatureId>,
+	pub home: Pos,
+	pub aggro_distance: i32,
+	pub give_up_distance: i32,
 }
 
 impl Creature {
 	
-	pub fn load_player(saved: PlayerSave) -> Self {
+	pub fn load_player(id: CreatureId, saved: PlayerSave) -> Self {
 		Self {
+			id,
 			pos: saved.pos,
 			walk_cooldown: Duration(2),
+			attack_cooldown: Duration(2),
 			sprite: Sprite::PlayerDefault,
 			inventory: Inventory::load(saved.inventory),
 			heard_sounds: Vec::new(),
-			movement: None,
+			activity: None,
 			plan: None,
 			name: saved.name,
 			faction: Faction::Player,
@@ -46,24 +56,36 @@ impl Creature {
 			max_health: 100,
 			attack: 5,
 			autoheal: Some(AutoHeal { cooldown: Duration(600), amount: 1, next: None }),
+			mind: Mind::Player,
+			target: None,
+			home: saved.pos,
+			aggro_distance: -1,
+			give_up_distance: 16,
 		}
 	}
 
-	pub fn spawn_npc(spawn_id: SpawnId, npc: Npc) -> Self {
+	pub fn spawn_npc(id: CreatureId, pos: Pos, npc: Npc) -> Self {
 		Self {
-			pos: spawn_id.0,
-			walk_cooldown: Duration(5),
+			id,
+			pos,
+			walk_cooldown: npc.walk_cooldown(),
+			attack_cooldown: npc.attack_cooldown(),
 			sprite: npc.sprite(),
 			inventory: Inventory::empty(),
 			heard_sounds: Vec::new(),
-			movement: None,
+			activity: None,
 			plan: None,
 			name: npc.name().to_string(),
 			faction: npc.faction(),
 			health: npc.health(),
 			max_health: npc.health(),
 			attack: npc.attack(),
-			autoheal: None
+			autoheal: None,
+			mind: npc.mind(),
+			target: None,
+			home: pos,
+			aggro_distance: npc.aggro_distance(),
+			give_up_distance: npc.give_up_distance(),
 		}
 	}
 	
@@ -71,8 +93,13 @@ impl Creature {
 		self.health <= 0
 	}
 
-	pub fn damage(&mut self, amount: i32) {
-		self.health -= amount;
+	pub fn attack(&mut self, mut opponent: RefMut<Creature>, time: Timestamp) {
+		opponent.health -= self.attack;
+		self.activity = Some(Activity {
+			typ: ActivityType::Attack(opponent.pos),
+			start: time,
+			end: time + self.attack_cooldown
+		});
 	}
 	
 	pub fn save(&self) -> PlayerSave {
@@ -80,7 +107,7 @@ impl Creature {
 			name: self.name.clone(),
 			pos: self.pos,
 			inventory: self.inventory.save(),
-			health: self.health,
+			health: self.health.max(0),
 		}
 	}
 
@@ -88,32 +115,32 @@ impl Creature {
 		CreatureView {
 			pos: self.pos,
 			sprite: self.sprite,
-			movement: self.movement.clone(),
+			activity: self.activity.clone(),
 			health: self.health.clamp(0, self.max_health),
 			max_health: self.max_health,
 		}
 	}
 
 	pub fn move_to(&mut self, newpos: Pos, time: Timestamp) {
-		self.movement = Some(Movement {
-			from: self.pos,
+		self.activity = Some(Activity {
+			typ: ActivityType::Walk(self.pos),
 			start: time,
 			end: time + self.walk_cooldown
 		});
 		self.pos = newpos;
 	}
 
-	pub fn current_movement(&self, time: Timestamp) -> Option<Movement> {
-		if time < self.movement.as_ref()?.end {
-			self.movement.clone()
+	pub fn current_activity(&self, time: Timestamp) -> Option<Activity> {
+		if time < self.activity.as_ref()?.end {
+			self.activity.clone()
 		} else {
 			None
 		}
 	}
 
-	pub fn can_move(&self, time: Timestamp) -> bool {
-		if let Some(movement) = &self.movement {
-			time >= movement.end
+	pub fn can_act(&self, time: Timestamp) -> bool {
+		if let Some(activity) = &self.activity {
+			time >= activity.end
 		} else {
 			true
 		}
@@ -178,8 +205,8 @@ pub struct CreatureView {
 	pub sprite: Sprite,
 	#[serde(rename = "p")]
 	pub pos: Pos,
-	#[serde(skip_serializing_if = "Option::is_none", rename="m")]
-	pub movement: Option<Movement>,
+	#[serde(skip_serializing_if = "Option::is_none", rename="a")]
+	pub activity: Option<Activity>,
 	#[serde(rename = "h")]
 	pub health: i32,
 	#[serde(rename = "hh")]
@@ -204,18 +231,24 @@ impl Faction {
 
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct Movement {
-	#[serde(rename = "f")]
-	pub from: Pos,
+pub struct Activity {
+	#[serde(flatten)]
+	pub typ: ActivityType,
 	#[serde(rename = "s")]
 	pub start: Timestamp,
 	#[serde(rename = "e")]
 	pub end: Timestamp,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub enum ActivityType {
+	#[serde(rename = "M")]
+	Walk(Pos),
+	#[serde(rename = "F")]
+	Attack(Pos),
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct SpawnId(pub Pos);
+
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Assoc, Serialize, Deserialize)]
@@ -224,15 +257,26 @@ pub struct SpawnId(pub Pos);
 #[func(fn faction(&self) -> Faction {Faction::Neutral})]
 #[func(fn health(&self) -> i32 {1})]
 #[func(fn attack(&self) -> i32 {0})]
+#[func(fn mind(&self) -> Mind {Mind::Idle})]
+#[func(fn aggro_distance(&self) -> i32 {-1})]
+#[func(fn give_up_distance(&self) -> i32 {-1})]
+#[func(fn walk_cooldown(&self) -> Duration {Duration(10)})]
+#[func(fn attack_cooldown(&self) -> Duration {Duration(100)})]
 pub enum Npc {
 	#[assoc(name = "Frog")]
 	#[assoc(sprite = Sprite::Frog)]
+	#[assoc(walk_cooldown = Duration(5))]
 	Frog,
 	#[assoc(name = "Worm")]
 	#[assoc(sprite = Sprite::Worm)]
+	#[assoc(mind = Mind::Aggressive)]
+	#[assoc(walk_cooldown = Duration(5))]
+	#[assoc(attack_cooldown = Duration(10))]
 	#[assoc(faction = Faction::Evil)]
 	#[assoc(health = 12)]
 	#[assoc(attack = 6)]
+	#[assoc(aggro_distance = 4)]
+	#[assoc(give_up_distance = 16)]
 	Worm
 }
 
@@ -244,3 +288,9 @@ struct AutoHeal {
 	next: Option<Timestamp>
 }
 
+#[derive(Debug, Clone)]
+pub enum Mind {
+	Player,
+	Idle,
+	Aggressive
+}
