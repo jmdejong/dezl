@@ -11,6 +11,7 @@ use crate::{
 	timestamp::Timestamp,
 	controls::{Control, Plan, DirectChange},
 	creatures::CreatureId,
+	random,
 };
 
 #[derive(Debug, Clone)]
@@ -26,10 +27,11 @@ pub struct Creature {
 	pub plan: Option<Plan>,
 	pub name: String,
 	pub faction: Faction,
-	pub attack: i32,
+	attack: i32,
 	health: i32,
 	max_health: i32,
 	autoheal: Option<AutoHeal>,
+	wounds: Vec<Wound>,
 	pub mind: Mind,
 	pub target: Option<CreatureId>,
 	pub home: Pos,
@@ -44,7 +46,7 @@ impl Creature {
 			id,
 			pos: saved.pos,
 			walk_cooldown: Duration(2),
-			attack_cooldown: Duration(2),
+			attack_cooldown: Duration(10),
 			sprite: Sprite::PlayerDefault,
 			inventory: Inventory::load(saved.inventory),
 			heard_sounds: Vec::new(),
@@ -54,8 +56,9 @@ impl Creature {
 			faction: Faction::Player,
 			health: saved.health,
 			max_health: 100,
+			wounds: Vec::new(),
 			attack: 5,
-			autoheal: Some(AutoHeal { cooldown: Duration(600), amount: 1, next: None }),
+			autoheal: Some(AutoHeal { cooldown: Duration(100), amount: 1, next: None }),
 			mind: Mind::Player,
 			target: None,
 			home: saved.pos,
@@ -79,6 +82,7 @@ impl Creature {
 			faction: npc.faction(),
 			health: npc.health(),
 			max_health: npc.health(),
+			wounds: Vec::new(),
 			attack: npc.attack(),
 			autoheal: None,
 			mind: npc.mind(),
@@ -94,12 +98,20 @@ impl Creature {
 	}
 
 	pub fn attack(&mut self, mut opponent: RefMut<Creature>, time: Timestamp) {
-		opponent.health -= self.attack;
+		let damage = self.attack;
+		opponent.health -= damage;
 		self.activity = Some(Activity {
-			typ: ActivityType::Attack(opponent.pos),
+			typ: ActivityType::Attack{ target: opponent.pos, damage },
 			start: time,
 			end: time + self.attack_cooldown
 		});
+		opponent.wounds.push(
+			Wound {
+				damage,
+				time,
+				rind: random::randomize_u32(random::randomize_pos(self.pos) + 37 * random::randomize_pos(self.home) + 17 * time.random_seed())
+			}
+		);
 	}
 	
 	pub fn save(&self) -> PlayerSave {
@@ -116,8 +128,9 @@ impl Creature {
 			pos: self.pos,
 			sprite: self.sprite,
 			activity: self.activity.clone(),
-			health: self.health.clamp(0, self.max_health),
+			health: self.health.max(0),
 			max_health: self.max_health,
+			wounds: self.wounds.clone(),
 		}
 	}
 
@@ -128,14 +141,6 @@ impl Creature {
 			end: time + self.walk_cooldown
 		});
 		self.pos = newpos;
-	}
-
-	pub fn current_activity(&self, time: Timestamp) -> Option<Activity> {
-		if time < self.activity.as_ref()?.end {
-			self.activity.clone()
-		} else {
-			None
-		}
 	}
 
 	pub fn can_act(&self, time: Timestamp) -> bool {
@@ -157,12 +162,16 @@ impl Creature {
 		self.heard_sounds.push((typ, text))
 	}
 
-	pub fn reset(&mut self) {
+	pub fn reset(&mut self, time: Timestamp) {
 		if let Some(Plan::Movement(_)) = self.plan {
 		} else {
 			self.plan = None;
 		}
-		self.heard_sounds = Vec::new()
+		self.heard_sounds = Vec::new();
+		if self.activity.as_ref().is_some_and(|activity| time > activity.end) {
+			self.activity = None;
+		}
+		self.wounds.retain(|wound| time - wound.time <= Duration(10));
 	}
 
 	pub fn autoheal_tick(&mut self, now: Timestamp) {
@@ -211,6 +220,8 @@ pub struct CreatureView {
 	pub health: i32,
 	#[serde(rename = "hh")]
 	pub max_health: i32,
+	#[serde(rename = "w")]
+	pub wounds: Vec<Wound>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -245,8 +256,24 @@ pub enum ActivityType {
 	#[serde(rename = "M")]
 	Walk(Pos),
 	#[serde(rename = "F")]
-	Attack(Pos),
+	Attack{
+		#[serde(rename="t")]
+		target: Pos,
+		#[serde(rename="d")]
+		damage: i32,
+	},
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct Wound {
+	#[serde(rename="d")]
+	damage: i32,
+	#[serde(rename="t")]
+	time: Timestamp,
+	#[serde(rename="r")]
+	rind: u32
+}
+
 
 
 
@@ -271,10 +298,10 @@ pub enum Npc {
 	#[assoc(sprite = Sprite::Worm)]
 	#[assoc(mind = Mind::Aggressive)]
 	#[assoc(walk_cooldown = Duration(5))]
-	#[assoc(attack_cooldown = Duration(10))]
+	#[assoc(attack_cooldown = Duration(20))]
 	#[assoc(faction = Faction::Evil)]
 	#[assoc(health = 12)]
-	#[assoc(attack = 6)]
+	#[assoc(attack = 3)]
 	#[assoc(aggro_distance = 4)]
 	#[assoc(give_up_distance = 16)]
 	Worm

@@ -8,7 +8,7 @@ use crate::{
 	config::MapDef,
 	controls::{Plan, Control},
 	pos::{Pos, Direction},
-	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, PositionMessage, SoundType},
+	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, SoundType},
 	timestamp::{Timestamp},
 	creature::{Creature, PlayerSave, CreatureView, Faction, Mind},
 	creatures::{Creatures, CreatureId, PlayerNotFound, PlayerAlreadyExists, CreatureNotFound},
@@ -317,7 +317,7 @@ impl World {
 				wm.change = changes.clone();
 			}
 			wm.dynamics = Some(dynamics.clone());
-			wm.pos = Some(PositionMessage{pos: body.pos, activity: body.current_activity(self.time)});
+			wm.me = Some(body.view());
 			wm.inventory = Some(body.inventory.view());
 			wm.sounds = body.heard_sounds.clone();
 
@@ -328,7 +328,7 @@ impl World {
 
 	pub fn clear_step(&mut self) {
 		for mut creature in self.creatures.all_mut() {
-			creature.reset();
+			creature.reset(self.time);
 		}
 	}
 	

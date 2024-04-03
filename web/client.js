@@ -195,9 +195,9 @@ class Client {
 		if (m.dynamics) {
 			this.model.setEntities(m.dynamics);
 		}
-		if (m.playerpos) {
-			this.model.setCenter(m.playerpos);
-			document.getElementById("coordinates").textContent = `${m.playerpos.pos[0]}, ${m.playerpos.pos[1]}`;
+		if (m.me) {
+			this.model.setMe(m.me);
+			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;
 		}
 		if (m.inventory) {
 			this.actionBar.setInventory(m.inventory[0]);

@@ -119,6 +119,15 @@ class DrawBuffer {
 		this.ctx.fillRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width * this.resolution, height * this.resolution);
 	}
 
+	text(text, x, y, color, outline, width) {
+		this.ctx.fillStyle = color;
+		this.ctx.strokeStyle = outline;
+		this.ctx.textAlign = "center";
+		this.ctx.font = "16px mono condensed";
+		this.ctx.fillText(text, (x-this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width);
+		this.ctx.strokeText(text, (x-this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width);
+	}
+
 	fillTile(color, x, y) {
 		this.drawRect(color, x, y, 1, 1);
 	}
@@ -295,6 +304,9 @@ class Display {
 		for (let entity of entities) {
 			this._drawSprite(entity.sprite, entity.x, entity.y);
 			this._drawHealthBar(entity.health, entity.maxHealth, entity.x, entity.y);
+			for (let wound of entity.wounds) {
+				this._drawWound(wound.damage, wound.age, entity.x, entity.y, wound.rind);
+			}
 		}
 	}
 
@@ -318,6 +330,12 @@ class Display {
 		let offset = 1/8;
 		this.buffers.effect.fillRect("#0f0", x, y-height-offset, ratio, height);
 		this.buffers.effect.fillRect("#c00", x+ratio, y-height-offset, 1-ratio, height);
+	}
+
+	_drawWound(damage, age, x, y, rind) {
+		let rx = rind / 0x1_00_00_00_00;
+		let ry = (rind % 0x1_00_00) / 0x1_00_00;
+		this.buffers.effect.text(damage, x+0.3 + 0.4*rx, y+0.4 + 0.4*ry - age/20, "#f77", "#f00")
 	}
 
 	_drawTile(tileX, tileY, sprites) {

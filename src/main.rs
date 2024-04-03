@@ -82,9 +82,9 @@ fn main(){
 }
 
 fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) {
-	
-	eprintln!("stucture size: {}", std::mem::size_of::<crate::tile::Structure>());
-	eprintln!("tile size: {}", std::mem::size_of::<crate::tile::Tile>());
+
+	// eprintln!("stucture size: {}", std::mem::size_of::<crate::tile::Structure>());
+	// eprintln!("tile size: {}", std::mem::size_of::<crate::tile::Tile>());
 	eprintln!("Server admin(s): {}", config.admins);
 
 	let adresses = config.address

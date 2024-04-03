@@ -135,10 +135,10 @@ class Client:
 		if dynamics:
 			self.display.drawDynamics(dynamics)
 
-		playerPos = m.get('playerpos')
-		if playerPos:
-			self.display.setFieldCenter(playerPos["pos"])
-			self.playerPos = playerPos["pos"]
+		me = m.get('me')
+		if me:
+			self.display.setFieldCenter(me["p"])
+			self.playerPos = me["p"]
 		
 		inventory = m.get("inventory")
 		if inventory:

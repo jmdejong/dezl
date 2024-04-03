@@ -6,7 +6,7 @@ class Model {
 	constructor() {
 		this.entities = {};
 		this.tick = 0;
-		this.position = {pos: [0, 0]};
+		this.me = {p: [0, 0]};
 	}
 
 	setTime(tick) {
@@ -21,32 +21,39 @@ class Model {
 		this.entities = dynamics;
 	}
 
-	setCenter(position) {
-		this.position = position;
+	setMe(me) {
+		this.me = me;
 	}
 
 	currentEntities() {
-		return Object.entries(this.entities).map(([id, entity]) => {
-			let [x, y] = entity.p;
-			if (entity.a && entity.a.M && this.tick < entity.a.e) {
+		return Object.values(this.entities).map(entity => {
+			let pos = vec2(...entity.p);
+			if (entity.a && this.tick < entity.a.e) {
 				let start = entity.a.s;
 				let progress = (this.tick - start) / (entity.a.e - start);
-				x += (entity.a.M[0] - x) * (1 - progress);
-				y += (entity.a.M[1] - y) * (1 - progress);
+				if (entity.a.M) {
+					let origin = vec2(...entity.a.M);
+					pos = origin.lerp(pos, progress);
+				} else if (entity.a.F) {
+					let d = Math.max(0, 0.25 - Math.abs(progress-0.25))*2;
+					let target = vec2(...entity.a.F.t)
+					pos = pos.lerp(target, d);
+				}
 			}
-			return {x: x, y: y, sprite: entity.s, health: entity.h, maxHealth: entity.hh};
+			let wounds = entity.w.map(wound => ({damage: wound.d, age: this.tick - wound.t, rind: wound.r}));
+			return {x: pos.x, y: pos.y, sprite: entity.s, health: entity.h, maxHealth: entity.hh, wounds};
 		});
 	}
 
 
 	currentCenter() {
-		let [cx, cy] = this.position.pos;
-		if (this.position.activity && this.position.activity.M && this.tick < this.position.activity.e) {
-			let start = this.position.activity.s;
-			let progress = (this.tick - start) / (this.position.activity.e - start);
-			cx += (this.position.activity.M[0] - cx) * (1-progress)
-			cy += (this.position.activity.M[1] - cy) * (1-progress)
+		let center = vec2(...this.me.p);
+		if (this.me.a && this.me.a.M && this.tick < this.me.a.e) {
+			let start = this.me.a.s;
+			let progress = (this.tick - start) / (this.me.a.e - start);
+			let origin = vec2(...this.me.a.M);
+			center = origin.lerp(center, progress);
 		}
-		return [cx, cy];
+		return [center.x, center.y];
 	}
 }

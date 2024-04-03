@@ -7,7 +7,7 @@ use crate::{
 	Sprite,
 	PlayerId,
 	timestamp::Timestamp,
-	creature::{CreatureView, Activity},
+	creature::{CreatureView},
 	creatures::CreatureId,
 	map::SectionView,
 };
@@ -19,8 +19,8 @@ pub struct WorldMessage {
 	pub tick: Timestamp,
 	#[serde(skip_serializing_if = "Vec::is_empty")]
 	pub sounds: Vec<(SoundType, String)>,
-	#[serde(rename="playerpos", skip_serializing_if = "Option::is_none")]
-	pub pos: Option<PositionMessage>,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub me: Option<CreatureView>,
 	#[serde(rename="changecells", skip_serializing_if = "Option::is_none")]
 	pub change: Option<ChangeMessage>,
 	#[serde(skip_serializing_if = "Option::is_none")]
@@ -67,18 +67,18 @@ macro_rules! worldmessages {
 	}
 }
 
-worldmessages!(pos, change,  inventory, viewarea, section, dynamics);
+worldmessages!(me, change,  inventory, viewarea, section, dynamics);
 
 pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, Option<usize>);
 pub type DynamicMessage = HashMap<CreatureId, CreatureView>;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct PositionMessage {
-	pub pos: Pos,
-	#[serde(skip_serializing_if = "Option::is_none")]
-	pub activity: Option<Activity>,
-}
+// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+// pub struct PositionMessage {
+// 	pub pos: Pos,
+// 	#[serde(skip_serializing_if = "Option::is_none")]
+// 	pub activity: Option<Activity>,
+// }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct ViewAreaMessage {
