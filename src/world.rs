@@ -219,10 +219,10 @@ impl World {
 	}
 
 	fn spawn_creatures(&mut self) {
-		for (spawn_id, npc) in self.ground.spawns() {
-			self.creatures.spawn(spawn_id, npc);
+		for (pos, npc) in self.ground.spawns() {
+			self.creatures.spawn(pos, npc);
 		}
-		self.creatures.despawn(&self.loaded_areas);
+		self.creatures.despawn(&self.loaded_areas, self.time);
 	}
 	
 	pub fn update(&mut self) {

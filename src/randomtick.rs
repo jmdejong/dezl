@@ -4,7 +4,7 @@ use crate::{
 	timestamp::Timestamp
 };
 
-pub const CHUNK_SIZE: i32 = 64;
+pub const CHUNK_SIZE: i32 = 16;
 const STEP: i64 = 541;
 const STEP_INVERSE: i64 = 53;
 pub const CHUNK_AREA: i64 = (CHUNK_SIZE * CHUNK_SIZE) as i64;

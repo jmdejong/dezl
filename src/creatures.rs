@@ -9,6 +9,7 @@ use crate::{
 	pos::Pos,
 	creature::{Creature, PlayerSave, Npc},
 	loadedareas::LoadedAreas,
+	timestamp::{Timestamp, Duration},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,7 +44,7 @@ impl Serialize for CreatureId {
 #[derive(Debug)]
 pub struct Creatures {
 	players: HashMap<PlayerId, Player>,
-	spawned_creatures: HashMap<SpawnId, RefCell<Creature>>,
+	spawned_creatures: HashMap<SpawnId, SpawnedCreature>,
 }
 
 impl Creatures {
@@ -98,7 +99,11 @@ impl Creatures {
 	fn iter_cell(&self) -> impl Iterator<Item=&RefCell<Creature>> {
 		self.players.values()
 			.map(|player| &player.body)
-			.chain(self.spawned_creatures.values())
+			.chain(
+				self.spawned_creatures.values()
+				.filter(|s| !s.body.borrow().is_dead())
+				.map(|s| &s.body)
+			)
 	}
 
 	pub fn all_mut(&self) -> impl Iterator<Item=RefMut<Creature>> {
@@ -112,7 +117,7 @@ impl Creatures {
 	fn creature_cell(&self, id: &CreatureId) -> Option<&RefCell<Creature>> {
 		match id {
 			CreatureId::Player(player_id) => self.players.get(player_id).map(|player| &player.body),
-			CreatureId::Spawned(spawn_id) => self.spawned_creatures.get(spawn_id),
+			CreatureId::Spawned(spawn_id) => self.spawned_creatures.get(spawn_id).map(|s| &s.body),
 		}
 	}
 
@@ -124,17 +129,25 @@ impl Creatures {
 		self.creature_cell(id).map(RefCell::borrow_mut)
 	}
 
-	pub fn spawn(&mut self, id: SpawnId, npc: Npc) {
+	pub fn spawn(&mut self, pos: Pos, npc: Npc) {
+		let id = SpawnId(pos);
 		if self.spawned_creatures.contains_key(&id) {
 			return;
 		}
 		// println!("spawning {:?} npc at {:?}", npc, spawn_id);
-		let body = Creature::spawn_npc(CreatureId::Spawned(id), id.0, npc);
-		self.spawned_creatures.insert(id, RefCell::new(body));
+		let body = Creature::spawn_npc(CreatureId::Spawned(id), pos, npc);
+		let spawned_creature = SpawnedCreature { body: RefCell::new(body), last_load: Timestamp(0) };
+		self.spawned_creatures.insert(id, spawned_creature);
 	}
 
-	pub fn despawn(&mut self, loaded_areas: &LoadedAreas) {
-		self.spawned_creatures.retain(|_spawn_id, body| !body.borrow().is_dead() && loaded_areas.is_loaded(body.borrow().pos));
+	pub fn despawn(&mut self, loaded_areas: &LoadedAreas, time: Timestamp) {
+		for spawned in self.spawned_creatures.values_mut() {
+			let body = spawned.body.borrow();
+			if !body.is_dead() && loaded_areas.is_loaded(body.pos) {
+				spawned.last_load = time;
+			}
+		}
+		self.spawned_creatures.retain(|_spawn_id, spawned| spawned.last_load > time - Duration(500));
 	}
 }
 
@@ -142,6 +155,12 @@ impl Creatures {
 pub struct Player {
 	pub plan: Option<Control>,
 	pub body: RefCell<Creature>
+}
+
+#[derive(Debug, Clone)]
+pub struct SpawnedCreature {
+	pub body: RefCell<Creature>,
+	pub last_load: Timestamp,
 }
 
 impl Player {
