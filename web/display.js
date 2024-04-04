@@ -301,6 +301,7 @@ class Display {
 	drawDynamics(entities) {
 		this.buffers.creatures.clear();
 		this.buffers.effect.clear();
+		entities.sort((a, b) => a.y - b.y);
 		for (let entity of entities) {
 			this._drawSprite(entity.sprite, entity.x, entity.y);
 			this._drawHealthBar(entity.health, entity.maxHealth, entity.x, entity.y);
