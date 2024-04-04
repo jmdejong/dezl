@@ -11,13 +11,13 @@ use crate::{
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Assoc, Serialize, Deserialize)]
-#[func(fn sprite(&self) -> Sprite)]
+#[func(fn sprite(self) -> Sprite)]
 #[func(fn describe(&self) -> &str)]
-#[func(fn interactions(&self) -> Vec<Interactable> {Vec::new()})]
-#[func(fn next(&self) -> Option<(i64, CropType)>)]
-#[func(fn grow(&self) -> Option<(i64, Structure)>)]
-#[func(fn fertilized_grow(&self) -> Option<CropType>)]
-#[func(fn inosculate(&self) -> Vec<(CropType, CropType)> {Vec::new()})]
+#[func(fn interactions(self) -> Vec<Interactable> {Vec::new()})]
+#[func(fn next(self) -> Option<(i64, CropType)>)]
+#[func(fn grow(self) -> Option<(i64, Structure)>)]
+#[func(fn fertilized_grow(self) -> Option<CropType>)]
+#[func(fn inosculate(self) -> Vec<(CropType, CropType)> {Vec::new()})]
 enum CropType {
 	
 	#[assoc(sprite = Sprite::PlantedSeed)]
@@ -134,7 +134,7 @@ const WATERED: u8 = 1<<7;
 const FERTILIZED: u8 = 1<<6;
 
 impl Crop {
-	pub fn all_interactions(&self) -> Vec<Interactable> {
+	pub fn all_interactions(self) -> Vec<Interactable> {
 		let mut interactions = self.typ.interactions();
 		if self.flags & WATERED == 0 {
 			interactions.push(Interactable::transform(InteractionType::Water, 1, Structure::Crop(self.water())));
@@ -145,18 +145,18 @@ impl Crop {
 		interactions
 	}
 	
-	fn water(&self) -> Self {
+	fn water(self) -> Self {
 		Self { typ: self.typ, flags: self.flags | WATERED }
 	}
 	
-	fn fertilize(&self) -> Self {
+	fn fertilize(self) -> Self {
 		Self { typ: self.typ, flags: self.flags | FERTILIZED }
 	}
 	
-	pub fn description(&self) -> String {
+	pub fn description(self) -> String {
 		let mut description = self.typ.describe().to_string();
 		if self.flags & WATERED == 0 {
-			description = format!("{}. Needs water", description)
+			description = format!("{}. Needs water", description);
 		}
 		if self.flags & FERTILIZED == 0 && self.typ.fertilized_grow().is_some() {
 			description = format!("{}. Can be fertilized", description);
@@ -164,7 +164,7 @@ impl Crop {
 		description
 	}
 	
-	pub fn grow(&self) -> Option<(i64, Structure, Option<Structure>)> {
+	pub fn grow(self) -> Option<(i64, Structure, Option<Structure>)> {
 		if self.flags & WATERED == 0 {
 			return None;
 		}
@@ -184,7 +184,7 @@ impl Crop {
 		}
 	}
 	
-	pub fn join(&self, other: Structure) -> Option<Structure> {
+	pub fn join(self, other: Structure) -> Option<Structure> {
 		if let Structure::Crop(crop) = other {
 			for (with, product) in self.typ.inosculate() {
 				if with == crop.typ {
@@ -195,7 +195,7 @@ impl Crop {
 		None
 	}
 	
-	pub fn sprite(&self) -> Sprite {
+	pub fn sprite(self) -> Sprite {
 		self.typ.sprite()
 	}
 	

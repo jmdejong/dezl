@@ -58,7 +58,7 @@ impl Server for UnixServer {
 				}
 				Ok((con_messages, closed)) => {
 					for message in con_messages {
-						messages.push(Message{connection: *connection_id, content: message})
+						messages.push(Message{connection: *connection_id, content: message});
 					}
 					if closed {
 						to_remove.push(*connection_id);

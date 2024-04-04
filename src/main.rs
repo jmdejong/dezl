@@ -169,7 +169,7 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 			message_cache.trim(&player, &mut message);
 
 // 			eprintln!("m {}", message.to_json());
-			gameserver.send_or_log(&player, ServerMessage::World(message));
+			gameserver.send_or_log(&player, ServerMessage::World(Box::new(message)));
 		}
 		let send_done = Instant::now();
 		world.clear_step();
@@ -209,7 +209,7 @@ fn bench_view(iterations: usize) {
 	let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
 	let mut world = World::new("bench".to_string(), basemap, mapdef);
 	let mut player_save = world.default_player("Player".to_string());
-	let player_id = PlayerId::new("Player");
+	let player_id = PlayerId::create("Player").unwrap();
 	let now = Instant::now();
 	for i in 0..iterations {
 		player_save.pos = Pos::new(i as i32 * 121 - 22, i as i32 * 8 - 63);

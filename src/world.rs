@@ -10,13 +10,12 @@ use crate::{
 	pos::{Pos, Direction},
 	worldmessages::{WorldMessage, ViewAreaMessage, ChangeMessage, SoundType::{BuildError}, SoundType},
 	timestamp::{Timestamp},
-	creature::{Creature, PlayerSave, CreatureView, Faction, Mind},
+	creature::{Creature, PlayerSave, CreatureView, Faction},
 	creatures::{Creatures, CreatureId, PlayerNotFound, PlayerAlreadyExists, CreatureNotFound},
 	map::{Map, MapSave},
 	basemap::BaseMapImpl,
 	loadedareas::LoadedAreas,
 	item::Item,
-	random,
 };
 
 pub struct World {
@@ -79,62 +78,7 @@ impl World {
 
 		let mut creature_map = CreatureMap::new(self.creatures.all());
 		for mut creature in self.creatures.all_mut() {
-			let home_pos = creature.home;
-			match creature.mind {
-				Mind::Player => {},
-				Mind::Idle => {
-					let rind = random::randomize_u32(random::randomize_pos(home_pos) + self.time.0 as u32);
-					if random::percentage(rind + 543, 10) {
-						let directions = if creature.pos != home_pos && random::percentage(rind + 471, 10) {
-								creature.pos.directions_to(home_pos)
-							} else {
-								vec![Direction::North, Direction::South, Direction::East, Direction::West]
-							};
-						let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
-						let control = Plan::Move(direction);
-						creature.control(Control::Plan(control));
-					}
-				}
-				Mind::Aggressive => {
-					let rind = random::randomize_u32(random::randomize_pos(home_pos) + self.time.0 as u32);
-					if let Some(target_id) = creature.target {
-						if let Some(target) = self.creatures.get_creature(&target_id) {
-							if creature.pos.distance_to(target.pos) > creature.give_up_distance {
-								creature.target = None;
-							}
-						} else  {
-							creature.target = None;
-						}
-					}
-					if creature.target.is_none() {
-						creature.target = creature_map.nearby(creature.pos, creature.aggro_distance)
-							.filter(|other| creature.faction.is_enemy(other.faction))
-							.min_by_key(|other| creature.pos.distance_to(other.pos))
-							.map(|other| other.id);
-					}
-					if let Some(target_id) = creature.target {
-						let target = self.creatures.get_creature(&target_id).unwrap();
-						if creature.pos == target.pos {
-							creature.control(Control::Plan(Plan::Fight(None)));
-						} else if creature.pos.distance_to(target.pos) == 1 {
-							let direction: Direction = creature.pos.directions_to(target.pos)[0];
-							creature.control(Control::Plan(Plan::Fight(Some(direction))));
-						} else {
-							let directions = creature.pos.directions_to(target.pos);
-							let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
-							creature.control(Control::Plan(Plan::Move(direction)));
-						}
-					} else if random::percentage(rind + 543, 10) {
-						let directions = if creature.pos != home_pos && random::percentage(rind + 471, 10) {
-								creature.pos.directions_to(home_pos)
-							} else {
-								vec![Direction::North, Direction::South, Direction::East, Direction::West]
-							};
-						let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
-						creature.control(Control::Plan(Plan::Move(direction)));
-					}
-				}
-			}
+			creature.plan(&creature_map, self.time);
 		}
 		let creatures: Vec<CreatureId> = self.creatures.all().map(|creature| creature.id).collect();
 
@@ -149,15 +93,12 @@ impl World {
 				plan.clone()
 			};
 			match plan {
-				Plan::Move(direction) => {
-					let _ = self.move_creature(&id, direction, &mut creature_map);
-				}
-				Plan::Movement(direction) => {
-					let _ = self.move_creature(&id, direction, &mut creature_map);
+				Plan::Move(direction) | Plan::Movement(direction)=> {
+					self.move_creature(&id, direction, &mut creature_map);
 				}
 				Plan::Inspect(direction) => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+					let pos = creature.pos + direction;
 					let tile = self.ground.cell(pos);
 					let mut text = tile.inspect();
 					for other in creature_map.get(&pos) {
@@ -170,19 +111,19 @@ impl World {
 				}
 				Plan::Take(direction) => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+					let pos = creature.pos + direction;
 					if let Some(item) = self.ground.take(pos) {
 						creature.inventory.add(item);
 					}
 				}
 				Plan::Use(index, direction) => {
 					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
-					let _ = self.interact_creature(&id, direction, item);
+					self.interact_creature(&id, direction, item);
 				}
 				Plan::Fight(direction) => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
-					if let Some(opponent) = creature_map.get(&pos).iter().filter(|o| creature.faction.is_enemy(o.faction)).next() {
+					let pos = creature.pos + direction;
+					if let Some(opponent) = creature_map.get(&pos).iter().find(|o| creature.faction.is_enemy(o.faction)) {
 						creature.attack(self.creatures.get_creature_mut(&opponent.id).unwrap(), self.time);
 					}
 				}
@@ -191,7 +132,7 @@ impl World {
 		}
 	}
 
-	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut CreatureMap) -> Result<(), CreatureNotFound> {
+	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut CreatureMap) {
 		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let newpos = creature.pos + direction;
 		let tile = self.ground.cell(newpos);
@@ -199,30 +140,29 @@ impl World {
 			creature_map.move_creature(*id, &creature, &creature.pos, newpos);
 			creature.move_to(newpos, self.time);
 		}
-		Ok(())
 	}
 
-	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) -> Result<(), CreatureNotFound> {
+	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) {
 		let mut creature = self.creatures.get_creature_mut(id).unwrap();
-		let pos = creature.pos + direction.map(|dir| dir.to_position()).unwrap_or_else(Pos::zero);
+		let pos = creature.pos + direction;
 		let tile = self.ground.cell(pos);
 		let Some(interaction) = tile.interact(item, self.time)
 			else {
-				return Ok(());
+				return;
 			};
 		if interaction.claim {
 			if let Some(player_id) = id.player() {
 				if self.claims.contains_key(player_id) {
 					creature.hear(BuildError, "Only one claim per player allowed".to_string());
-					return Ok(())
+					return;
 				}
 				if self.claims.values().any(|p| p.distance_to(pos) < 64) {
 					creature.hear(BuildError, "Too close to existing claim".to_string());
-					return Ok(())
+					return;
 				}
 				if pos.distance_to(self.ground.player_spawn()) < 96 {
 					creature.hear(BuildError, "Too close to spawn".to_string());
-					return Ok(())
+					return;
 				}
 				self.claims.insert(*player_id, pos);
 			} else {
@@ -230,7 +170,7 @@ impl World {
 					BuildError,
 					"Only players can claim land and you're not a player. If you read this something has probably gone wrong.".to_string()
 				);
-				return Ok(())
+				return;
 			}
 		}
 		if interaction.build {
@@ -240,18 +180,18 @@ impl World {
 						BuildError,
 						"Too far from land claim to build".to_string()
 					);
-					return Ok(())
+					return;
 				}
 			} else {
 				creature.hear(
 					BuildError,
 					"Need land claim to build".to_string()
 				);
-				return Ok(())
+				return;
 			}
 		}
 		if !creature.inventory.pay(interaction.cost) {
-			return Ok(())
+			return;
 		}
 		for item in interaction.items {
 			creature.inventory.add(item);
@@ -265,7 +205,6 @@ impl World {
 		if let Some((message_type, message_text)) = interaction.message {
 			creature.hear(message_type, message_text);
 		}
-		Ok(())
 	}
 
 	fn update_loaded_areas(&mut self) {
@@ -276,7 +215,7 @@ impl World {
 		for fresh_area in self.loaded_areas.all_fresh() {
 			self.ground.load_area(fresh_area);
 		}
-		self.ground.tick(self.time, self.loaded_areas.all_loaded());
+		self.ground.tick(self.time, &self.loaded_areas.all_loaded());
 	}
 
 	fn spawn_creatures(&mut self) {
@@ -366,14 +305,15 @@ pub struct WorldSave {
 }
 
 #[derive(Debug)]
-struct CreatureMap {
-	map: HashMap<Pos, HashMap<CreatureId, CreatureTile>>
+pub struct CreatureMap {
+	map: HashMap<Pos, HashMap<CreatureId, CreatureTile>>,
+	all: HashMap<CreatureId, CreatureTile>
 }
 
 impl CreatureMap {
 
 	pub fn new<'a>(creatures: impl Iterator<Item=Ref<'a, Creature>>) -> Self {
-		let mut map = Self { map: HashMap::new() };
+		let mut map = Self { map: HashMap::new(), all: HashMap::new() };
 		for creature in creatures {
 			map.insert(creature.pos, creature.id, &creature);
 		}
@@ -384,6 +324,10 @@ impl CreatureMap {
 		self.map.get(pos).map(|c| c.values().copied().collect()).unwrap_or_default()
 	}
 
+	pub fn get_creature(&self, id: &CreatureId) -> Option<&CreatureTile> {
+		self.all.get(id)
+	}
+
 	pub fn nearby(&self, pos: Pos, distance: i32) -> impl Iterator<Item=&CreatureTile> {
 		self.map.iter()
 			.filter(move |(p, _)| p.distance_to(pos) <= distance)
@@ -392,8 +336,7 @@ impl CreatureMap {
 
 	pub fn blocking(&self, pos: &Pos, creature: &Creature) -> bool {
 		self.map.get(pos)
-			.map(|creatures| creatures.values().any(|c| c.faction.is_enemy(creature.faction)))
-			.unwrap_or(false)
+			.is_some_and(|creatures| creatures.values().any(|c| c.faction.is_enemy(creature.faction)))
 	}
 
 
@@ -408,13 +351,16 @@ impl CreatureMap {
 	}
 
 	fn insert(&mut self, pos: Pos, id: CreatureId, creature: &Creature) {
-		self.map.entry(pos).or_default().insert(id, CreatureTile::new(id, creature));
+		let mut tile = CreatureTile::new(id, creature);
+		tile.pos = pos;
+		self.map.entry(pos).or_default().insert(id, tile);
+		self.all.insert(id, tile);
 	}
 }
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct CreatureTile {
+pub struct CreatureTile {
 	pub id: CreatureId,
 	pub faction: Faction,
 	pub pos: Pos,

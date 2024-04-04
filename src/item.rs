@@ -13,11 +13,11 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Assoc)]
 #[serde(rename_all="snake_case")]
-#[func(pub fn actions(&self) -> Vec<Action> {Vec::new()})]
+#[func(pub fn actions(self) -> Vec<Action> {Vec::new()})]
 #[func(pub fn description(&self) -> &str)]
 #[func(pub fn name(&self) -> &str)]
-#[func(pub fn quantified(&self) -> bool {true})]
-#[func(pub fn sprite(&self) -> Option<Sprite>)]
+#[func(pub fn quantified(self) -> bool {true})]
+#[func(pub fn sprite(self) -> Option<Sprite>)]
 pub enum Item {
 	#[assoc(name="reed")]
 	#[assoc(description="Some cut reeds")]

@@ -116,8 +116,7 @@ impl InfiniteMap {
 		let my_biome = self.biome_at(bpos);
 		distances[1..].iter()
 			.find(|(_, b)| self.biome_at(*b) != my_biome)
-			.map(|(d, _)| d - dist)
-			.unwrap_or(BIOME_SIZE / 2)
+			.map_or(BIOME_SIZE / 2, |(d, _)| d - dist)
 	}
 
 	fn biome_pos(&self, pos: Pos) -> (BPos, Pos) {

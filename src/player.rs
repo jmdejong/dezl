@@ -1,6 +1,6 @@
 
 use std::fmt;
-use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::{Serialize, Deserialize, Serializer, Deserializer, de};
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PlayerId{
@@ -9,17 +9,17 @@ pub struct PlayerId{
 }
 
 impl PlayerId {
-	pub fn new(name: &str) -> Self {
+	pub fn create(name: &str) -> Result<Self, String> {
 		let len = name.as_bytes().len();
 		if len > 14 {
-			panic!("player name {} is too long (max 14 bytes allowed)", name);
+			return Err(format!("player name {} is too long. Max 14 bytes allowed while length is {}", name, len));
 		}
 		let mut id = Self {
 			len: len as u8,
 			bytes: Default::default()
 		};
 		id.bytes[..len].copy_from_slice(name.as_bytes());
-		id
+		Ok(id)
 	}
 
 	pub fn name(&self) -> &str {
@@ -42,7 +42,7 @@ impl Serialize for PlayerId {
 impl<'de> Deserialize<'de> for PlayerId {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
 	where D: Deserializer<'de> {
-		Ok(Self::new(<&str>::deserialize(deserializer)?))
+		Self::create(<&str>::deserialize(deserializer)?).map_err(de::Error::custom)
 	}
 }
 

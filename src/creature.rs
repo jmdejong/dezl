@@ -4,13 +4,14 @@ use serde::{Serialize, Deserialize};
 use enum_assoc::Assoc;
 use crate::{
 	sprite::Sprite,
-	Pos,
+	pos::{Pos, Direction},
 	timestamp::Duration,
 	inventory::{Inventory, InventorySave},
 	worldmessages::SoundType,
 	timestamp::Timestamp,
 	controls::{Control, Plan, DirectChange},
 	creatures::CreatureId,
+	world::CreatureMap,
 	random,
 };
 
@@ -32,11 +33,11 @@ pub struct Creature {
 	max_health: i32,
 	autoheal: Option<AutoHeal>,
 	wounds: Vec<Wound>,
-	pub mind: Mind,
-	pub target: Option<CreatureId>,
-	pub home: Pos,
-	pub aggro_distance: i32,
-	pub give_up_distance: i32,
+	mind: Mind,
+	target: Option<CreatureId>,
+	home: Pos,
+	aggro_distance: i32,
+	give_up_distance: i32,
 }
 
 impl Creature {
@@ -159,7 +160,7 @@ impl Creature {
 	}
 
 	pub fn hear(&mut self, typ: SoundType, text: String) {
-		self.heard_sounds.push((typ, text))
+		self.heard_sounds.push((typ, text));
 	}
 
 	pub fn reset(&mut self, time: Timestamp) {
@@ -184,6 +185,65 @@ impl Creature {
 				autoheal.next = Some(now + autoheal.cooldown);
 			}
 		}
+	}
+
+	pub fn plan(&mut self, creature_map: &CreatureMap, time: Timestamp) {
+		let home_pos = self.home;
+			match self.mind {
+				Mind::Player => {},
+				Mind::Idle => {
+					let rind = random::randomize_u32(random::randomize_pos(home_pos) + time.0 as u32);
+					if random::percentage(rind + 543, 10) {
+						let directions = if self.pos != home_pos && random::percentage(rind + 471, 10) {
+								self.pos.directions_to(home_pos)
+							} else {
+								vec![Direction::North, Direction::South, Direction::East, Direction::West]
+							};
+						let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
+						let control = Plan::Move(direction);
+						self.control(Control::Plan(control));
+					}
+				}
+				Mind::Aggressive => {
+					let rind = random::randomize_u32(random::randomize_pos(home_pos) + time.0 as u32);
+					if let Some(target_id) = self.target {
+						if let Some(target) = creature_map.get_creature(&target_id) {
+							if self.pos.distance_to(target.pos) > self.give_up_distance {
+								self.target = None;
+							}
+						} else  {
+							self.target = None;
+						}
+					}
+					if self.target.is_none() {
+						self.target = creature_map.nearby(self.pos, self.aggro_distance)
+							.filter(|other| self.faction.is_enemy(other.faction))
+							.min_by_key(|other| self.pos.distance_to(other.pos))
+							.map(|other| other.id);
+					}
+					if let Some(target_id) = self.target {
+						let target = creature_map.get_creature(&target_id).unwrap();
+						if self.pos == target.pos {
+							self.control(Control::Plan(Plan::Fight(None)));
+						} else if self.pos.distance_to(target.pos) == 1 {
+							let direction: Direction = self.pos.directions_to(target.pos)[0];
+							self.control(Control::Plan(Plan::Fight(Some(direction))));
+						} else {
+							let directions = self.pos.directions_to(target.pos);
+							let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
+							self.control(Control::Plan(Plan::Move(direction)));
+						}
+					} else if random::percentage(rind + 543, 10) {
+						let directions = if self.pos != home_pos && random::percentage(rind + 471, 10) {
+								self.pos.directions_to(home_pos)
+							} else {
+								vec![Direction::North, Direction::South, Direction::East, Direction::West]
+							};
+						let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
+						self.control(Control::Plan(Plan::Move(direction)));
+					}
+				}
+			}
 	}
 }
 
@@ -321,3 +381,4 @@ pub enum Mind {
 	Idle,
 	Aggressive
 }
+

@@ -11,7 +11,7 @@ impl Timestamp {
 		self.0 += 1;
 	}
 	
-	pub fn random_seed(&self) -> u32 {
+	pub fn random_seed(self) -> u32 {
 		random::randomize_u32(self.0 as u32 ^ 12345)
 	}
 }

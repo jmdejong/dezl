@@ -62,7 +62,7 @@ struct MessageError {
 
 #[derive(Debug)]
 pub enum ServerMessage<'a> {
-	World(WorldMessage),
+	World(Box<WorldMessage>),
 	Message(&'a str),
 	Connected(String),
 	Welcome(WelcomeMsg),
@@ -99,7 +99,7 @@ pub struct GameServer {
 impl GameServer {
 	pub fn new(raw_servers: Vec<ServerEnum>) -> GameServer {
 		let mut servers = Holder::new();
-		for server in raw_servers.into_iter() {
+		for server in raw_servers {
 			servers.insert(server);
 		}
 		GameServer {
@@ -196,8 +196,8 @@ impl GameServer {
 		let id = clientid;
 		match msg {
 			ClientMessage::Introduction(name) => {
-				if name.as_bytes().len() > 15 {
-					return Err(merr!(name, "A name can not be longer than 15 bytes"));
+				if name.as_bytes().len() > 14 {
+					return Err(merr!(name, "A name can not be longer than 14 bytes"));
 				}
 				if name.is_empty() {
 					return Err(merr!(name, "A name must have at least one character"));
@@ -210,7 +210,7 @@ impl GameServer {
 				if self.players.contains_key(&id) {
 					return Err(merr!(action, "You can not change your name"));
 				}
-				let player = PlayerId::new(&name);
+				let player = PlayerId::create(&name).map_err(|err| merr!(name, err))?;
 				if self.connections.contains_key(&player) {
 					return Err(merr!(ErrTyp::NameTaken, "Another connection to this player exists already"));
 				}

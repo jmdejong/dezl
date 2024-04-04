@@ -153,6 +153,17 @@ impl Add<Direction> for Pos {
 	}
 }
 
+impl Add<Option<Direction>> for Pos {
+	type Output = Pos;
+	fn add(self, dir: Option<Direction>) -> Pos {
+		let other = dir.map_or_else(Pos::zero, Direction::to_position);
+		Pos {
+			x: self.x + other.x,
+			y: self.y + other.y
+		}
+	}
+}
+
 impl Sub<Pos> for Pos {
 	type Output = Pos;
 	fn sub(self, other: Pos) -> Pos {

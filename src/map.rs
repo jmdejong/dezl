@@ -38,12 +38,12 @@ impl Map {
 	}
 	
 	pub fn cell(&self, pos: Pos) -> Tile {
-		self.changes.get(&pos).map(|change| change.0).unwrap_or_else(|| self.base_cell(pos))
+		self.changes.get(&pos).map_or_else(|| self.base_cell(pos), |change| change.0)
 	}
 
 	fn region(&self, area: Area) -> impl Iterator<Item = Tile> + '_ {
 		self.basemap.region(area, self.time).into_iter().map(|(pos, base_cell)| {
-			self.changes.get(&pos).map(|change| change.0).unwrap_or(base_cell)
+			self.changes.get(&pos).map_or(base_cell, |change| change.0)
 		})
 	}
 
@@ -64,12 +64,12 @@ impl Map {
 	
 	pub fn set_structure(&mut self, pos: Pos, structure: Structure) {
 		let new_tile = Tile::structure(self.cell(pos).ground, structure) ;
-		self.set(pos, new_tile )
+		self.set(pos, new_tile);
 	}
 	
 	pub fn set_ground(&mut self, pos: Pos, ground: Ground) {
 		let new_tile = Tile::structure(ground, self.cell(pos).structure);
-		self.set(pos, new_tile )
+		self.set(pos, new_tile);
 	}
 
 	pub fn take(&mut self, pos: Pos) -> Option<Item> {
@@ -82,7 +82,7 @@ impl Map {
 		self.basemap.player_spawn()
 	}
 	
-	pub fn tick(&mut self, time: Timestamp, areas: Vec<Area>) {
+	pub fn tick(&mut self, time: Timestamp, areas: &[Area]) {
 		self.time = time;
 		let chunk_size = randomtick::CHUNK_SIZE;
 		let tick_pos = randomtick::tick_position(time);
@@ -175,16 +175,13 @@ impl Map {
 		for tile in self.region(area) {
 			let tile_sprites = tile.sprites();
 			values.push(
-				match mapping.iter().position(|x| x == &tile_sprites) {
-					Some(index) => {
-						index
-					}
-					None => {
-						mapping.push(tile_sprites);
-						mapping.len() - 1
-					}
+				if let Some(index) = mapping.iter().position(|x| x == &tile_sprites) {
+					index
+				} else {
+					mapping.push(tile_sprites);
+					mapping.len() - 1
 				}
-			)
+			);
 		}
 		SectionView {
 			area,

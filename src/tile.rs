@@ -14,13 +14,13 @@ use crate::{
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Assoc, Serialize, Deserialize)]
-#[func(fn sprite(&self) -> Option<Sprite>)]
-#[func(fn accessible(&self) -> bool {true})]
-#[func(fn clear(&self) -> Option<Ground>)]
+#[func(fn sprite(self) -> Option<Sprite>)]
+#[func(fn accessible(self) -> bool {true})]
+#[func(fn clear(self) -> Option<Ground>)]
 #[func(fn describe(&self) -> Option<&str>)]
-#[func(fn craft(&self) -> Option<CraftType>)]
-#[func(fn buildable(&self) -> bool {false})]
-#[func(pub fn restoring(&self) -> bool {false})]
+#[func(fn craft(self) -> Option<CraftType>)]
+#[func(fn buildable(self) -> bool {false})]
+#[func(pub fn restoring(self) -> bool {false})]
 pub enum Ground {
 	#[assoc(sprite = Sprite::Dirt)]
 	#[assoc(describe = "Dirt")]
@@ -84,18 +84,18 @@ pub enum Ground {
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Assoc, Serialize, Deserialize)]
-#[func(fn sprite(&self) -> Option<Sprite>)]
-#[func(fn blocking(&self) -> bool {false})]
-#[func(pub fn is_open(&self) -> bool {false})]
-#[func(fn explain(&self) -> Option<&str>)]
-#[func(fn interactions(&self) -> Vec<Interactable> {Vec::new()})]
-#[func(fn take(&self) -> Option<Item>)]
+#[func(fn sprite(self) -> Option<Sprite>)]
+#[func(fn blocking(self) -> bool {false})]
+#[func(pub fn is_open(self) -> bool {false})]
+#[func(fn explain(self) -> Option<String>)]
+#[func(fn interactions(self) -> Vec<Interactable> {Vec::new()})]
+#[func(fn take(self) -> Option<Item>)]
 #[func(fn describe(&self) -> Option<&str>)]
-#[func(fn description(&self) -> Option<String> { self.describe().map(|s| s.to_string())})]
-#[func(fn craft(&self) -> Option<CraftType>)]
-#[func(fn grow(&self) -> Option<(i64, Structure, Option<Structure>)>)]
-#[func(fn join(&self, other: Structure) -> Option<Structure>)]
-#[func(fn spawn(&self) -> Option<Npc>)]
+#[func(fn description(self) -> Option<String> { self.describe().map(|s| s.to_string())})]
+#[func(fn craft(self) -> Option<CraftType>)]
+#[func(fn grow(self) -> Option<(i64, Structure, Option<Structure>)>)]
+#[func(fn join(self, other: Structure) -> Option<Structure>)]
+#[func(fn spawn(self) -> Option<Npc>)]
 pub enum Structure {
 	#[assoc(is_open = true)]
 	Air,
@@ -214,7 +214,7 @@ pub enum Structure {
 	
 	#[assoc(sprite = Sprite::Sage)]
 	#[assoc(blocking = true)]
-	#[assoc(explain = "Sage")]
+	#[assoc(explain = "Sage".to_string())]
 	#[assoc(describe = "Sage. An old wise person with grey hair. This sage can tell you about items in your inventory")]
 	Sage,
 	
@@ -320,10 +320,10 @@ pub enum Structure {
 	#[assoc(join = _0.join(other)?)]
 	Crop(Crop),
 
-	#[assoc(spawn = *_0)]
+	#[assoc(spawn = _0)]
 	Spawn(Npc),
 
-	#[assoc(take = *_0)]
+	#[assoc(take = _0)]
 	#[assoc(describe = _0.description())]
 	#[assoc(sprite = _0.sprite()?)]
 	Item(Item),
@@ -331,7 +331,7 @@ pub enum Structure {
 
 
 impl Structure {
-	fn interactables(&self) -> Vec<Interactable> {
+	fn interactables(self) -> Vec<Interactable> {
 		let mut interactions = self.interactions();
 		if let Some(item) = self.take() {
 			interactions.push(Interactable::take(&[item]));
@@ -339,8 +339,8 @@ impl Structure {
 		interactions
 	}
 	
-	pub fn joined(&self, other: Structure) -> Option<Structure> {
-		self.join(other).or_else(|| other.join(*self))
+	pub fn joined(self, other: Structure) -> Option<Structure> {
+		self.join(other).or_else(|| other.join(self))
 	}
 }
 
@@ -364,21 +364,21 @@ impl Tile {
 		Self{ground, structure}
 	}
 	
-	pub fn sprites(&self) -> Vec<Sprite> {
+	pub fn sprites(self) -> Vec<Sprite> {
 		[self.structure.sprite(), self.ground.sprite()].into_iter()
 			.flatten()
 			.collect()
 	}
 	
-	pub fn blocking(&self) -> bool {
+	pub fn blocking(self) -> bool {
 		!self.ground.accessible() || self.structure.blocking()
 	}
 	
-	fn can_build(&self) -> bool {
+	fn can_build(self) -> bool {
 		self.structure.is_open() && self.ground.buildable()
 	}
 
-	pub fn inspect(&self) -> String {
+	pub fn inspect(self) -> String {
 		let mut text = self.ground.describe().unwrap_or("").to_string();
 		if let Some(s) = self.structure.description() {
 			text = format!("{} | {}", text, s);
@@ -386,11 +386,11 @@ impl Tile {
 		text
 	}
 	
-	pub fn interact(&self, item: Item, time: Timestamp) -> Option<InteractionResult> {
-		item.actions().into_iter().filter_map(|action| self.act(action, item, time)).next()
+	pub fn interact(self, item: Item, time: Timestamp) -> Option<InteractionResult> {
+		item.actions().into_iter().find_map(|action| self.act(action, item, time))
 	}
 	
-	pub fn act(&self, action: Action, item: Item, time: Timestamp) -> Option<InteractionResult> {
+	pub fn act(self, action: Action, item: Item, time: Timestamp) -> Option<InteractionResult> {
 		if let Some(name) = self.structure.explain() {
 			return Some(InteractionResult {
 				message: Some((SoundType::Explain, format!("{}: {}", name, item.description()))),
@@ -401,8 +401,7 @@ impl Tile {
 			Action::Interact(interact) => {
 				let mut result = self.structure.interactables()
 					.into_iter()
-					.filter_map(|interactable| interactable.apply(interact, time))
-					.next()?;
+					.find_map(|interactable| interactable.apply(interact, time))?;
 				if interact.use_item {
 					result.cost.insert(item, 1);
 				}
@@ -455,15 +454,15 @@ impl Tile {
 		}
 	}
 	
-	pub fn grow(&self) -> Option<(i64, Structure, Option<Structure>)> {
+	pub fn grow(self) -> Option<(i64, Structure, Option<Structure>)> {
 		self.structure.grow()
 	}
 
-	pub fn spawn(&self) -> Option<Npc> {
+	pub fn spawn(self) -> Option<Npc> {
 		self.structure.spawn()
 	}
 
-	pub fn take(&self) -> Option<(Tile, Item)> {
+	pub fn take(self) -> Option<(Tile, Item)> {
 		Some((Self::ground(self.ground), self.structure.take()?))
 	}
 }

@@ -29,9 +29,7 @@ impl LoadedAreas {
 		self.fresh = HashMap::new();
 		for (player_id, pos) in player_positions.iter() {
 			let old_area = self.loaded.get(player_id);
-			let in_view_range = old_area
-					.map(|area| area.grow(-EDGE_OFFSET).contains(*pos))
-					.unwrap_or(false);
+			let in_view_range = old_area.is_some_and(|area| area.grow(-EDGE_OFFSET).contains(*pos));
 			if !in_view_range {
 				let (total_area, new_area) = Self::new_area(*pos, old_area);
 				self.loaded.insert(*player_id, total_area);
