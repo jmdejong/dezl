@@ -19,6 +19,11 @@ use crate::{
 #[func(pub fn quantified(self) -> bool {true})]
 #[func(pub fn sprite(self) -> Option<Sprite>)]
 pub enum Item {
+	#[assoc(name="<nothing>")]
+	#[assoc(description="Your empty hands")]
+	#[assoc(actions=vec![Action::interact(Take, 1, false)])]
+	Nothing,
+
 	#[assoc(name="reed")]
 	#[assoc(description="Some cut reeds")]
 	Reed,

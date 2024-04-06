@@ -110,10 +110,18 @@ impl World {
 					creature.hear(SoundType::Explain, text);
 				}
 				Plan::Take(direction) => {
-					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					let pos = creature.pos + direction;
-					if let Some(item) = self.ground.take(pos) {
-						creature.inventory.add(item);
+					let easy_take = {
+						let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+						let pos = creature.pos + direction;
+						if let Some(item) = self.ground.take(pos) {
+							creature.inventory.add(item);
+							true
+						} else {
+							false
+						}
+					};
+					if !easy_take {
+						self.interact_creature(&id, direction, Item::Nothing);
 					}
 				}
 				Plan::Use(index, direction) => {

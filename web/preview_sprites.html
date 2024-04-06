@@ -14,43 +14,38 @@
 figure {
 	text-align: center;
 	border: 1px solid gray;
-/* 	float: left; */
 	display: inline-block;
-/* 	flex-flow: column; */
 	padding: 4px 2px;
 	margin: 5px;
 	min-width: 64px;
-/* 	vertical-align: top; */
 }
 canvas {
-/* 	border: 1px solid black; */
-/* 	display: inline; */
-/* 	width: 100px; */
-/* 	height: 100px; */
 	image-rendering: pixelated;
-/* 	margin: 0px; */
 }
 figcaption {
-/* 	display: flex; */
-/* 	flex-flow: column; */
-/* 	vertical-align: bottom; */
-/* 	border: 1px solid blue; */
-/* 	box-sizing: content-box; */
 	height: 20px;
 	font-size: 12px;
-/* 	margin: 0px; */
 }
 span {
 	border: 1px solid red;
 }
-/*div {
-	border: 1px solid cyan;
-}*/
 </style>
 </head>
 <body>
 <div id="previews">
 </div>
+<input type="color" id="colorpicker" name="colorpicker" value="#ffffff" />
+<label for="colorpicker">Background color</label>
+<script>
+let picker = document.getElementById("colorpicker");
+picker.value = "#ffffff";
+function setBackground(){
+	for (let canvas of document.getElementsByTagName("canvas")) {
+		canvas.style.backgroundColor = picker.value;
+	}
+}
+picker.addEventListener("change", setBackground);
+</script>
 <div class="resources" hidden>
 	<img id="spritemap" src="spritemap.png"></img>
 	<img id="fuzz-template" src="fuzz_template.png"></img>

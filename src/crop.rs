@@ -27,25 +27,29 @@ enum CropType {
 	
 	#[assoc(sprite = Sprite::Seedling)]
 	#[assoc(describe = "Seedling")]
-	#[assoc(next = (1, CropType::YoungLeafPlant))]
+	#[assoc(next = (1, CropType::YoungDiscPlant))]
 	GreenSeedling,
 	
-	#[assoc(sprite = Sprite::YoungLeafPlant)]
+	#[assoc(sprite = Sprite::YoungDiscPlant)]
 	#[assoc(describe = "A small plant with big round leaves")]
-	#[assoc(next = (1, CropType::LeafPlant))]
-	#[assoc(fertilized_grow = CropType::LeafShoot)]
-	YoungLeafPlant,
+	#[assoc(next = (1, CropType::DiscPlant))]
+	#[assoc(fertilized_grow = CropType::DiscShoot)]
+	YoungDiscPlant,
 	
-	#[assoc(sprite = Sprite::LeafPlant)]
+	#[assoc(sprite = Sprite::DiscPlant)]
 	#[assoc(describe = "A plant with big round leaves")]
-	#[assoc(grow = (1, Structure::SeedingDiscLeaf))]
-	#[assoc(fertilized_grow = CropType::LeafShoot)]
-	LeafPlant,
+	#[assoc(grow = (1, Structure::SeedingDiscPlant))]
+	#[assoc(fertilized_grow = CropType::DiscShoot)]
+	DiscPlant,
 	
-	#[assoc(sprite = Sprite::LeafPlant)]
+	#[assoc(sprite = Sprite::DiscShoot)]
 	#[assoc(describe = "A shoot of a plant with big round leaves")]
 	#[assoc(grow = (1, Structure::DiscLeaf))]
-	LeafShoot,
+	#[assoc(inosculate = vec![
+		(CropType::HardShoot, CropType::HardDiscPlant),
+		(CropType::KnifeShoot, CropType::DiscKnifePlant)
+	])]
+	DiscShoot,
 	
 	
 	#[assoc(sprite = Sprite::PlantedSeed)]
@@ -66,13 +70,17 @@ enum CropType {
 	
 	#[assoc(sprite = Sprite::KnifePlant)]
 	#[assoc(describe = "A plant with sharp leaves")]
-	#[assoc(grow = (1, Structure::SeedingKnifeLeaf))]
+	#[assoc(grow = (1, Structure::SeedingKnifePlant))]
 	#[assoc(fertilized_grow = CropType::KnifeShoot)]
 	KnifePlant,
 	
-	#[assoc(sprite = Sprite::KnifePlant)]
+	#[assoc(sprite = Sprite::KnifeShoot)]
 	#[assoc(describe = "A shoot of a plant with sharp leaves")]
 	#[assoc(grow = (1, Structure::KnifeLeaf))]
+	#[assoc(inosculate = vec![
+		(CropType::DiscShoot, CropType::DiscKnifePlant),
+		(CropType::HardShoot, CropType::HardKnifePlant)
+	])]
 	KnifeShoot,
 	
 	
@@ -94,15 +102,15 @@ enum CropType {
 	
 	#[assoc(sprite = Sprite::HardPlant)]
 	#[assoc(describe = "Plant with a very hard stem")]
-	#[assoc(grow = (1, Structure::SeedingHardwood))]
+	#[assoc(grow = (1, Structure::SeedingHardPlant))]
 	#[assoc(fertilized_grow = CropType::HardShoot)]
 	HardPlant,
 	
-	#[assoc(sprite = Sprite::HardPlant)]
+	#[assoc(sprite = Sprite::HardShoot)]
 	#[assoc(describe = "A shoot of a plant with hard branches")]
 	#[assoc(grow = (1, Structure::HardwoodStick))]
 	#[assoc(inosculate = vec![
-		(CropType::LeafShoot, CropType::HardDiscPlant),
+		(CropType::DiscShoot, CropType::HardDiscPlant),
 		(CropType::KnifeShoot, CropType::HardKnifePlant)
 	])]
 	HardShoot,
@@ -117,10 +125,10 @@ enum CropType {
 	#[assoc(grow = (1, Structure::HardwoodTable))]
 	HardDiscPlant,
 	
-	#[assoc(sprite = Sprite::SawPlant)]
+	#[assoc(sprite = Sprite::DiscKnifePlant)]
 	#[assoc(describe = "A shoot of a knife plant inosculated with a shoot of a disc plant")]
 	#[assoc(grow = (1, Structure::SawBlade))]
-	SawPlant,
+	DiscKnifePlant,
 }
 
 

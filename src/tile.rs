@@ -253,20 +253,20 @@ pub enum Structure {
 	#[assoc(describe = "Mark stone. Center of a land claim")]
 	MarkStone,
 	
-	#[assoc(sprite = Sprite::SeedingHardwood)]
+	#[assoc(sprite = Sprite::SeedingHardPlant)]
 	#[assoc(describe = "Seeding Hardwood")]
-	#[assoc(interactions = vec![Interactable::take(&[Item::BrownSeed])])]
-	SeedingHardwood,
+	#[assoc(interactions = vec![Interactable::take(&[Item::BrownSeed, Item::BrownSeed])])]
+	SeedingHardPlant,
 	
-	#[assoc(sprite = Sprite::SeedingDiscLeaf)]
+	#[assoc(sprite = Sprite::SeedingDiscPlant)]
 	#[assoc(describe = "Seeding Disc plant")]
-	#[assoc(interactions = vec![Interactable::take(&[Item::GreenSeed])])]
-	SeedingDiscLeaf,
+	#[assoc(interactions = vec![Interactable::take(&[Item::GreenSeed, Item::GreenSeed])])]
+	SeedingDiscPlant,
 	
-	#[assoc(sprite = Sprite::SeedingKnifeLeaf)]
+	#[assoc(sprite = Sprite::SeedingKnifePlant)]
 	#[assoc(describe = "Seeding Knife plant")]
-	#[assoc(interactions = vec![Interactable::take(&[Item::YellowSeed])])]
-	SeedingKnifeLeaf,
+	#[assoc(interactions = vec![Interactable::take(&[Item::YellowSeed, Item::YellowSeed])])]
+	SeedingKnifePlant,
 	
 	#[assoc(sprite = Sprite::DiscLeaf)]
 	#[assoc(describe = "DiscLeaf")]
