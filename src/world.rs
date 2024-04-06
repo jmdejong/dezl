@@ -338,7 +338,7 @@ impl CreatureMap {
 
 	pub fn blocking(&self, pos: &Pos, creature: &Creature) -> bool {
 		self.map.get(pos)
-			.is_some_and(|creatures| creatures.values().any(|c| c.faction.is_enemy(creature.faction)))
+			.is_some_and(|creatures| creatures.values().any(|c| c.id != creature.id && c.blocking))
 	}
 
 
@@ -365,6 +365,7 @@ impl CreatureMap {
 pub struct CreatureTile {
 	pub id: CreatureId,
 	pub faction: Faction,
+	pub blocking: bool,
 	pub pos: Pos,
 }
 
@@ -374,6 +375,7 @@ impl CreatureTile {
 			id,
 			pos: creature.pos,
 			faction: creature.faction,
+			blocking: creature.blocking,
 		}
 	}
 }

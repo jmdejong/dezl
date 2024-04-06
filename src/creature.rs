@@ -1,5 +1,6 @@
 
 use std::cell::RefMut;
+use core::ops::Not;
 use serde::{Serialize, Deserialize};
 use enum_assoc::Assoc;
 use crate::{
@@ -27,6 +28,7 @@ pub struct Creature {
 	activity: Option<Activity>,
 	pub plan: Option<Plan>,
 	pub name: String,
+	pub blocking: bool,
 	pub faction: Faction,
 	attack: i32,
 	health: i32,
@@ -54,6 +56,7 @@ impl Creature {
 			activity: None,
 			plan: None,
 			name: saved.name,
+			blocking: false,
 			faction: Faction::Player,
 			health: saved.health,
 			max_health: 100,
@@ -80,6 +83,7 @@ impl Creature {
 			activity: None,
 			plan: None,
 			name: npc.name().to_string(),
+			blocking: npc.blocking(),
 			faction: npc.faction(),
 			health: npc.health(),
 			max_health: npc.health(),
@@ -128,6 +132,7 @@ impl Creature {
 		CreatureView {
 			pos: self.pos,
 			sprite: self.sprite,
+			blocking: self.blocking,
 			activity: self.activity.clone(),
 			health: self.health.max(0),
 			max_health: self.max_health,
@@ -274,7 +279,7 @@ pub struct CreatureView {
 	pub sprite: Sprite,
 	#[serde(rename = "p")]
 	pub pos: Pos,
-	#[serde(skip_serializing_if = "Option::is_none", rename="a")]
+	#[serde(rename="a", skip_serializing_if = "Option::is_none")]
 	pub activity: Option<Activity>,
 	#[serde(rename = "h")]
 	pub health: i32,
@@ -282,6 +287,8 @@ pub struct CreatureView {
 	pub max_health: i32,
 	#[serde(rename = "w")]
 	pub wounds: Vec<Wound>,
+	#[serde(rename = "b", skip_serializing_if = "Not::not")]
+	pub blocking: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -349,6 +356,7 @@ pub struct Wound {
 #[func(fn give_up_distance(&self) -> i32 {-1})]
 #[func(fn walk_cooldown(&self) -> Duration {Duration(10)})]
 #[func(fn attack_cooldown(&self) -> Duration {Duration(100)})]
+#[func(fn blocking(&self) -> bool {false})]
 pub enum Npc {
 	#[assoc(name = "Frog")]
 	#[assoc(sprite = Sprite::Frog)]
@@ -357,6 +365,7 @@ pub enum Npc {
 	#[assoc(name = "Worm")]
 	#[assoc(sprite = Sprite::Worm)]
 	#[assoc(mind = Mind::Aggressive)]
+	#[assoc(blocking = true)]
 	#[assoc(walk_cooldown = Duration(5))]
 	#[assoc(attack_cooldown = Duration(20))]
 	#[assoc(faction = Faction::Evil)]
