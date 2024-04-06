@@ -184,10 +184,10 @@ class Client {
 		this.model.setTime(m.t);
 		if (m.viewarea) {
 			this.readyToDraw = true;
-			this.display.setViewArea(m.viewarea.area);
+			this.display.setViewArea(Area.parse(m.viewarea.area));
 		}
 		if (m.section) {
-			this.display.drawSection(m.section.area.w, m.section.area.h, m.section.area.x, m.section.area.y, m.section.field, m.section.mapping);
+			this.display.drawSection(Area.parse(m.section.area), m.section.field, m.section.mapping);
 		}
 		if (m.changecells) {
 			this.display.changeTiles(m.changecells);

@@ -4,7 +4,7 @@
 class Model {
 
 	constructor() {
-		this.entities = {};
+		this.entities = [];
 		this.tick = 0;
 		this.me = {p: [0, 0]};
 	}
@@ -18,7 +18,14 @@ class Model {
 	}
 
 	setEntities(dynamics) {
-		this.entities = dynamics;
+		let entities = [];
+		for (let id in dynamics) {
+			let entity = dynamics[id];
+			entity.id = id;
+			entities.push(entity);
+		}
+		entities.sort((a, b) => a.p[1] - b.p[1]);
+		this.entities = entities;
 	}
 
 	setMe(me) {
@@ -26,7 +33,7 @@ class Model {
 	}
 
 	currentEntities() {
-		return Object.values(this.entities).map(entity => {
+		return this.entities.map(entity => {
 			let pos = vec2(...entity.p);
 			if (entity.a && this.tick < entity.a.e) {
 				let start = entity.a.s;

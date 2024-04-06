@@ -96,8 +96,13 @@ impl Map {
 			})
 			.collect::<HashSet<Pos>>();
 		for pos in tick_positions {
-			self.modifications.insert(pos);
+			self.time = time - Duration(1);
+			let old = self.cell(pos);
+			self.time = time;
 			self.tick_one(pos);
+			if self.cell(pos) != old {
+				self.modifications.insert(pos);
+			}
 		}
 	}
 	

@@ -23,6 +23,14 @@ class Sprite {
 	drawOn(ctx, x, y) {
 		ctx.drawImage(this.image, this.x, this.y, this.width, this.height, x, y, this.width, this.height);
 	}
+
+	getImage(resolution) {
+		let canvas = document.createElement("canvas");
+		canvas.width = this.width * resolution;
+		canvas.height = this.height * resolution;
+		let ctx = canvas.getContext("2d");
+		ctx.drawImage(this.image, this.x, this.y, this.width, this.height, 0, 0, this.width * resolution, this.height * resolution);
+	}
 }
 
 class LayeredSprite {
@@ -122,26 +130,32 @@ class DrawBuffer {
 		this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 	}
 
-	fillRect(color, x, y, width, height) {
-		this.ctx.fillStyle = color;
-		this.ctx.fillRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width * this.resolution, height * this.resolution);
+	fromWorld(pos) {
+		return pos.sub(this.area.origin()).mul(this.resolution)
 	}
 
-	text(text, x, y, color, outline, width) {
+	text(text, pos, color, outline, width) {
 		this.ctx.fillStyle = color;
 		this.ctx.strokeStyle = outline;
 		this.ctx.textAlign = "center";
 		this.ctx.font = "16px mono condensed";
-		this.ctx.fillText(text, (x-this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width);
-		this.ctx.strokeText(text, (x-this.area.x) * this.resolution, (y - this.area.y) * this.resolution, width);
+		let bpos = this.fromWorld(pos);
+		this.ctx.fillText(text, bpos.x, bpos.y, width);
+		this.ctx.strokeText(text, bpos.x, bpos.y, width);
+	}
+	fillRect(color, area) {
+		this.ctx.fillStyle = color;
+		let a = this.fromWorld(area);
+		this.ctx.fillRect(a.x, a.y, a.w, a.h);
 	}
 
-	fillTile(color, x, y) {
-		this.fillRect(color, x, y, 1, 1);
+	clearRect(area) {
+		let a = this.fromWorld(area);
+		this.ctx.clearRect(a.x, a.y, a.w, a.h);
 	}
 
 	clearTile(x, y) {
-		this.ctx.clearRect((x - this.area.x) * this.resolution, (y - this.area.y) * this.resolution, this.resolution, this.resolution);
+		this.clearRect(new Area(x, y, 1, 1));
 	}
 
 	drawBorders(color, x, y, edges, width) {
@@ -177,6 +191,14 @@ class DrawBuffer {
 		this.ctx.stroke();
 		this.ctx.lineWidth = 1;
 	}
+
+	move(area) {
+		this.area = Area.fromCorners(area.origin().floor(), area.max().ceil());
+		// console.log(this.area);
+		this.canvas.width = this.area.w * this.resolution;
+		this.canvas.height = this.area.h * this.resolution;
+		this.ctx.imageSmoothingEnabled = false;
+	}
 }
 
 class Layer {
@@ -184,20 +206,12 @@ class Layer {
 		opts = opts || {};
 		this.name = name;
 		this.clear = opts.clear|| ClearMode.Tile;
-		this.offset = opts.offset || [0, 0];
+		this.offset = vec2(...(opts.offset || [0, 0]));
 		this.trueScale = opts.trueScale || false;
 	}
 
 	clearMode() {
 		return this.clear;
-	}
-
-	offsetX() {
-		return this.offset[0];
-	}
-
-	offsetY() {
-		return this.offset[1];
 	}
 
 }
@@ -208,30 +222,27 @@ class Display {
 	constructor(canvas, spritemap, fuzzSprite) {
 		this.canvas = canvas;
 		this.outerCtx = canvas.getContext("2d");
+		let groundOffset = [0, 1/this.tileSize]
 		this.layers = [
-			new Layer("ground"),
-			new Layer("fuzz", {clear: ClearMode.None}),
-			new Layer("base"),
-			new Layer("borders", {clear: ClearMode.None}),
+			new Layer("ground", {offset: groundOffset}),
+			new Layer("fuzz", {offset: groundOffset, clear: ClearMode.None}),
+			new Layer("base", {offset: groundOffset}),
+			new Layer("borders", {offset: groundOffset, clear: ClearMode.None}),
 			new Layer("main"),
 			new Layer("creatures", {clear: ClearMode.None, trueScale: true}),
-			new Layer("effect", {clear: ClearMode.None, trueScale: true}),
 			new Layer("wol", {offset: [-1, 0]}),
 			new Layer("wom", {offset: [0, 0]}),
 			new Layer("wor", {offset: [1, 0]}),
+			new Layer("effect", {clear: ClearMode.None, trueScale: true}),
 			new Layer("hol", {offset: [-1, -1]}),
 			new Layer("hom", {offset: [0, -1]}),
 			new Layer("hor", {offset: [1, -1]}),
 		];
 		this.buffers = {};
 		this.spritemap = spritemap;
-		this.offsetX = 0;
-		this.offsetY = 0;
-		this.centerX = 0;
-		this.centerY = 0;
+		this.area = new Area(0, 0, 0, 0);
+		this.center = vec2(0, 0);
 		this.borders = new Map();
-		this.width = 0;
-		this.height = 0;
 		this.scale = 4;
 		this.init = false;
 		this.fuzzSprite = fuzzSprite;
@@ -243,16 +254,13 @@ class Display {
 			if (layer.trueScale) {
 				resolution *= this.scale;
 			}
-			let buffer = new DrawBuffer(area, resolution);
+			let buffer = new DrawBuffer(area.grow(1), resolution);
 			if (this.buffers[layer.name]) {
 				buffer.drawBuffer(this.buffers[layer.name]);
 			}
 			this.buffers[layer.name] = buffer;
 		}
-		this.offsetX = area.x;
-		this.offsetY = area.y;
-		this.width = area.w;
-		this.height = area.h;
+		this.area = area;
 		let minX = area.x - 1;
 		let minY = area.y - 1;
 		let maxX = area.x + area.w;
@@ -263,25 +271,26 @@ class Display {
 				map.delete(key);
 			}
 		});
+		this.init = true
 	}
 
-	drawSection(width, height, offsetX, offsetY, cells, mapping){
+	drawSection(area, cells, mapping){
 		let borderMap = {};
 		for (let key in mapping) {
 			borderMap[key] = this._border(mapping[key]);
 		}
-		for (let i=0; i<width * height; ++i){
-			let x = (i % width) + offsetX;
-			let y = (i / width | 0) + offsetY;
+		for (let layer of this.layers) {
+			if (layer.clearMode() === ClearMode.Tile) {
+				this.buffers[layer.name].clearRect(area);
+			}
+		}
+		for (let i=0; i<area.w * area.h; ++i){
+			let x = (i % area.w) + area.x;
+			let y = (i / area.w | 0) + area.y;
 			this._drawTile(x, y, mapping[cells[i]]);
 			this.borders.set(hashpos(x, y), borderMap[cells[i]]);
 		}
-		for (let x=offsetX-1; x<width+offsetX+1; ++x) {
-			for (let y=offsetY-1; y<height+offsetY+1; ++y) {
-				this._drawBorder(x, y);
-			}
-		}
-		this.init = true
+		area.grow(1).forEach(pos => this._drawBorder(pos.x, pos.y));
 	}
 
 	changeTiles(tiles) {
@@ -292,6 +301,13 @@ class Display {
 			let x = tile[0][0];
 			let y = tile[0][1];
 			let sprites = tile[1];
+
+			for (let layer of this.layers) {
+				if (layer.clearMode() === ClearMode.Tile) {
+					this.buffers[layer.name].clearTile(x, y)
+				}
+			}
+			// this.buffers.fuzz.drawBehind(buffer => buffer.drawSprite(this.fuzzSprite, tileX, tileY));
 			this._drawTile(x, y, sprites);
 			let border = this._border(sprites);
 			let p = hashpos(x, y);
@@ -307,9 +323,11 @@ class Display {
 	}
 
 	drawDynamics(entities) {
+		// let visibleArea = this.screenToWorld(new Area(0, 0, this.canvas.width, this.canvas.height));
+		// this.buffers.creatures.move(visibleArea);
+		// this.buffers.effect.move(visibleArea);
 		this.buffers.creatures.clear();
 		this.buffers.effect.clear();
-		entities.sort((a, b) => a.y - b.y);
 		for (let entity of entities) {
 			this.drawSprite(entity.sprite, entity.x, entity.y);
 			this._drawHealthBar(entity.health, entity.maxHealth, entity.x, entity.y);
@@ -326,7 +344,7 @@ class Display {
 				this.buffers[layer].drawSprite(sprite.layers[layer], x, y);
 			}
 		} else {
-			this.buffers.base.fillTile(this._getColor(spritename), x, y);
+			this.buffers.base.fillRect(this._getColor(spritename), new Area(x, y, 1, 1));
 		}
 	}
 
@@ -337,23 +355,19 @@ class Display {
 		let ratio = health / maxHealth;
 		let height = 1/8;
 		let offset = 1/8;
-		this.buffers.effect.fillRect("#0f0", x, y-height-offset, ratio, height);
-		this.buffers.effect.fillRect("#c00", x+ratio, y-height-offset, 1-ratio, height);
+		let area = new Area(x, y-height-offset, 1, height);
+		let [green, red] = area.divideY(ratio);
+		this.buffers.effect.fillRect("#0f0", green);
+		this.buffers.effect.fillRect("#c00", red);
 	}
 
 	_drawWound(damage, age, x, y, rind) {
 		let rx = rind / 0x1_00_00_00_00;
 		let ry = (rind % 0x1_00_00) / 0x1_00_00;
-		this.buffers.effect.text(damage, x+0.3 + 0.4*rx, y+0.4 + 0.4*ry - age/20, "#f77", "#f00")
+		this.buffers.effect.text(damage, vec2(x+0.3 + 0.4*rx, y+0.4 + 0.4*ry - age/20), "#f77", "#f00")
 	}
 
 	_drawTile(tileX, tileY, sprites) {
-		for (let layer of this.layers) {
-			if (layer.clearMode() === ClearMode.Tile) {
-				this.buffers[layer.name].clearTile(tileX, tileY)
-			}
-		}
-		this.buffers.fuzz.drawBehind(buffer => buffer.drawSprite(this.fuzzSprite, tileX, tileY));
 		for (let i=sprites.length; i --> 0;) {
 			let name = sprites[i];
 			this.drawSprite(name, tileX, tileY);
@@ -379,8 +393,7 @@ class Display {
 	}
 
 	setCenter(x, y) {
-		this.centerX = x;
-		this.centerY = y;
+		this.center = vec2(x, y);
 	}
 
 	_getColor(name){
@@ -404,22 +417,28 @@ class Display {
 		return null;
 	}
 
+	screenCenter() {
+		return vec2(this.canvas.width, this.canvas.height).div(2).floor();
+	}
+
+	worldToScreen(pos) {
+		return pos.sub(this.center).mul(this.tileSize * this.scale).add(this.screenCenter())
+	}
+
+	screenToWorld(spos) {
+		return spos.sub(this.screenCenter()).div(this.tileSize * this.scale).add(this.center);
+	}
+
 	redraw(){
 		if (!this.init) {
 			return;
 		}
 		let tileSize = this.tileSize * this.scale;
-		let centerX = (this.centerX - this.offsetX) * tileSize;
-		let centerY = (this.centerY - this.offsetY) * tileSize;
 		this.outerCtx.imageSmoothingEnabled = false;
 		for (let layer of this.layers) {
 			let buffer = this.buffers[layer.name];
-			let area = {
-				x: (this.canvas.width / 2 - centerX + layer.offsetX() * tileSize) | 0,
-				y: (this.canvas.height / 2 - centerY + layer.offsetY() * tileSize) | 0,
-				w: (buffer.canvas.width * tileSize / buffer.resolution) | 0,
-				h: (buffer.canvas.height * tileSize / buffer.resolution) | 0
-			};
+			let bufferCanvasSize = vec2(buffer.canvas.width, buffer.canvas.height);
+			let area = this.worldToScreen(buffer.area.add(layer.offset));
 			this.outerCtx.drawImage(
 				buffer.canvas,
 				area.x,
@@ -427,6 +446,13 @@ class Display {
 				area.w,
 				area.h
 			);
+			// let wa = this.screenToWorld(new Area(0, 0, this.canvas.width, this.canvas.height));
+			// let ba = buffer.fromWorld(wa.sub(layer.offset));
+			// this.outerCtx.drawImage(
+			// 	buffer.canvas,
+			// 	ba.x, ba.y, ba.w, ba.h,
+			// 	0, 0, this.canvas.width, this.canvas.height
+			// );
 		}
 	}
 

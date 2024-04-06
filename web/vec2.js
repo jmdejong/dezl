@@ -7,11 +7,6 @@ class Vec2 {
 		this.y = y;
 	}
 
-	hash() {
-		// return this.x + "," + this.y;
-		return this.x + (1<<15) | (this.y + (1<<15)) <<16;
-	}
-
 	surface() {
 		return this.x * this.y;
 	}
@@ -20,28 +15,44 @@ class Vec2 {
 		return Math.hypot(this.x, this.y);
 	}
 
-	normalize() {
-		return this.mult(1/this.length());
-	}
-
-	mult(n) {
-		return vec2(this.x * n, this.y * n);
-	}
-
 	add(v) {
-		return vec2(this.x + v.x, this.y + v.y);
+		return new Vec2(this.x + v.x, this.y + v.y);
 	}
 
 	sub(v) {
-		return vec2(this.x - v.x, this.y - v.y);
+		return new Vec2(this.x - v.x, this.y - v.y);
+	}
+
+	mul(n) {
+		return new Vec2(this.x * n, this.y * n);
+	}
+
+	div(n) {
+		return new Vec2(this.x / n, this.y / n);
+	}
+
+	floor() {
+		return new Vec2(this.x|0, this.y|0);
+	}
+
+	round() {
+		return new Vec2(Math.round(this.x), Math.round(this.y));
+	}
+
+	ceil() {
+		return new Vec2(Math.ceil(this.x), Math.ceil(this.y));
+	}
+
+	normalize() {
+		return this.div(this.length());
 	}
 
 	lerp(to, d) {
-		return this.mult(1-d).add(to.mult(d));
+		return this.mul(1-d).add(to.mul(d));
 	}
 
 	clone() {
-		return vec2(this.x, this.y);
+		return new Vec2(this.x, this.y);
 	}
 
 }
@@ -49,3 +60,65 @@ class Vec2 {
 function vec2(x, y) {
 	return new Vec2(x, y);
 }
+
+class Area {
+	constructor(x, y, w, h) {
+		this.x = x;
+		this.y = y;
+		this.w = w;
+		this.h = h;
+	}
+
+	static parse(o) {
+		return new Area(o.x, o.y, o.w, o.h);
+	}
+	static fromVecs(pos, size) {
+		return new Area(pos.x, pos.y, size.x, size.y);
+	}
+	static fromCorners(pos, max) {
+		return new Area(pos.x, pos.y, max.x - pos.x, max.y - pos.y);
+	}
+
+	origin() {
+		return new Vec2(this.x, this.y);
+	}
+
+	size() {
+		return new Vec2(this.w, this.h);
+	}
+
+	max() {
+		return new Vec2(this.x + this.w, this.y + this.h);
+	}
+
+	grow(s) {
+		return new Area(this.x-s, this.y-s, this.w+s*2, this.h+s*2);
+	}
+
+	forEach(fn) {
+		for (let x=this.x; x<this.x+this.w; ++x) {
+			for (let y=this.y; y<this.y+this.h; ++y) {
+				fn(new Vec2(x, y));
+			}
+		}
+	}
+
+	mul(m) {
+		return new Area(this.x * m, this.y * m, this.w * m, this.h * m);
+	}
+	div(m) {
+		return new Area(this.x / m, this.y / m, this.w / m, this.h / m);
+	}
+
+	add(v) {
+		return new Area(this.x + v.x, this.y + v.y, this.w, this.h);
+	}
+	sub(v) {
+		return new Area(this.x - v.x, this.y - v.y, this.w, this.h);
+	}
+	divideY(xRel) {
+		let x = xRel * this.w + this.x;
+		return [new Area(this.x, this.y, x - this.x, this.h), new Area(x, this.y, this.x + this.w - x, this.h)];
+	}
+}
+
