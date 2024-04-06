@@ -60,7 +60,7 @@ class Display:
 		field = self.getWidget("field")
 		previousDynamics = set(self.knownDynamics.keys())
 		self.knownDynamics = {}
-		for d in dynamics.values():
+		for d in dynamics:
 			x, y = d["p"]
 			pos = (x, y)
 			sprite = d["s"]

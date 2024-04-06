@@ -255,8 +255,8 @@ impl World {
 	pub fn view(&self) -> HashMap<PlayerId, WorldMessage> {
 		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
-		let dynamics: HashMap<CreatureId, CreatureView> = self.creatures.all()
-			.map(|creature| (creature.id, creature.view()))
+		let dynamics: Vec<CreatureView> = self.creatures.all()
+			.map(|creature| creature.view())
 			.collect();
 		for (id, body) in self.creatures.iter_players() {
 			let mut wm = WorldMessage::new(self.time);

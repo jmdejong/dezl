@@ -329,10 +329,10 @@ class Display {
 		this.buffers.creatures.clear();
 		this.buffers.effect.clear();
 		for (let entity of entities) {
-			this.drawSprite(entity.sprite, entity.x, entity.y);
-			this._drawHealthBar(entity.health, entity.maxHealth, entity.x, entity.y);
+			this.drawSprite(entity.sprite, entity.pos.x, entity.pos.y);
+			this._drawHealthBar(entity.health, entity.maxHealth, entity.pos.x, entity.pos.y);
 			for (let wound of entity.wounds) {
-				this._drawWound(wound.damage, wound.age, entity.x, entity.y, wound.rind);
+				this._drawWound(wound.damage, wound.age, entity.pos, wound.rind);
 			}
 		}
 	}
@@ -361,10 +361,11 @@ class Display {
 		this.buffers.effect.fillRect("#c00", red);
 	}
 
-	_drawWound(damage, age, x, y, rind) {
+	_drawWound(damage, age, pos, rind) {
 		let rx = rind / 0x1_00_00_00_00;
 		let ry = (rind % 0x1_00_00) / 0x1_00_00;
-		this.buffers.effect.text(damage, vec2(x+0.3 + 0.4*rx, y+0.4 + 0.4*ry - age/20), "#f77", "#f00")
+		let roffset = vec2(0.3 + 0.4*rx, 0.4 + 0.4*ry - age/20);
+		this.buffers.effect.text(damage, pos.add(roffset), "#f77", "#f00");
 	}
 
 	_drawTile(tileX, tileY, sprites) {
@@ -392,8 +393,8 @@ class Display {
 		return this.borders.get(hashpos(x, y));
 	}
 
-	setCenter(x, y) {
-		this.center = vec2(x, y);
+	setCenter(pos) {
+		this.center = pos;
 	}
 
 	_getColor(name){

@@ -34,10 +34,10 @@ function main() {
 			display.setViewArea(new Area(0, 0, 2, 2));
 			if (sprite.big) {
 				display.resize(64, 72);
-				display.setCenter(1, 0.5);
+				display.setCenter(vec2(1, 0.5));
 			} else {
 				display.resize(40, 40);
-				display.setCenter(1, 1);
+				display.setCenter(vec2(1, 1));
 			}
 			display.drawSprite(sprite.name, 0.5, 0.5);
 			display.init = true;

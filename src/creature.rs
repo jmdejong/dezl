@@ -130,6 +130,7 @@ impl Creature {
 
 	pub fn view(&self) -> CreatureView {
 		CreatureView {
+			id: self.id,
 			pos: self.pos,
 			sprite: self.sprite,
 			blocking: self.blocking,
@@ -275,6 +276,8 @@ impl PlayerSave {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CreatureView {
+	#[serde(rename = "i")]
+	pub id: CreatureId,
 	#[serde(rename = "s")]
 	pub sprite: Sprite,
 	#[serde(rename = "p")]

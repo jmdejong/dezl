@@ -8,7 +8,6 @@ use crate::{
 	PlayerId,
 	timestamp::Timestamp,
 	creature::{CreatureView},
-	creatures::CreatureId,
 	map::SectionView,
 };
 
@@ -71,14 +70,7 @@ worldmessages!(me, change,  inventory, viewarea, section, dynamics);
 
 pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, Option<usize>);
-pub type DynamicMessage = HashMap<CreatureId, CreatureView>;
-
-// #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-// pub struct PositionMessage {
-// 	pub pos: Pos,
-// 	#[serde(skip_serializing_if = "Option::is_none")]
-// 	pub activity: Option<Activity>,
-// }
+pub type DynamicMessage = Vec<CreatureView>;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct ViewAreaMessage {

@@ -182,6 +182,18 @@ class Client {
 
 	handleWorldMessage(m){
 		this.model.setTime(m.t);
+		if (m.me) {
+			this.model.setMe(m.me);
+			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;
+		}
+		if (m.inventory) {
+			this.actionBar.setInventory(m.inventory[0]);
+		}
+		if (m.sounds) {
+			for (let sound of m.sounds) {
+				this.print(sound[1], sound[0]);
+			}
+		}
 		if (m.viewarea) {
 			this.readyToDraw = true;
 			this.display.setViewArea(Area.parse(m.viewarea.area));
@@ -194,18 +206,6 @@ class Client {
 		}
 		if (m.dynamics) {
 			this.model.setEntities(m.dynamics);
-		}
-		if (m.me) {
-			this.model.setMe(m.me);
-			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;
-		}
-		if (m.inventory) {
-			this.actionBar.setInventory(m.inventory[0]);
-		}
-		if (m.sounds) {
-			for (let sound of m.sounds) {
-				this.print(sound[1], sound[0]);
-			}
 		}
 	}
 
@@ -240,8 +240,7 @@ class Client {
 	}
 
 	draw() {
-		let [cx, cy] = this.model.currentCenter();
-		this.display.setCenter(cx, cy);
+		this.display.setCenter(this.model.currentCenter());
 		this.display.drawDynamics(this.model.currentEntities());
 		this.display.redraw();
 	}
