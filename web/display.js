@@ -26,9 +26,13 @@ class Sprite {
 }
 
 class LayeredSprite {
-	constructor(layers, border) {
+	constructor(name, layers, border, big, x, y) {
+		this.name = name;
 		this.layers = layers;
 		this.border = border;
+		this.big = big
+		this.x = x;
+		this.y = y;
 	}
 }
 
@@ -52,16 +56,20 @@ class SpriteMap {
 			} else {
 				let mainSprite = new Sprite(image, entry.x * size, entry.y * size, size, size)
 				layers[entry.layer || "main"] = mainSprite;
-				if (entry.layer == "ground") {
+				if (entry.layer === "ground") {
 					layers.fuzz = fuzzTemplate.fuzz(mainSprite);
 				}
 			}
-			this.sprites[name] = new LayeredSprite(layers, entry.border);
+			this.sprites[name] = new LayeredSprite(name, layers, entry.border, entry.wide, entry.x, entry.y);
 		}
 	}
 
 	sprite(name) {
 		return this.sprites[name];
+	}
+
+	all() {
+		return Object.values(this.sprites);
 	}
 }
 
@@ -129,7 +137,7 @@ class DrawBuffer {
 	}
 
 	fillTile(color, x, y) {
-		this.drawRect(color, x, y, 1, 1);
+		this.fillRect(color, x, y, 1, 1);
 	}
 
 	clearTile(x, y) {
@@ -303,7 +311,7 @@ class Display {
 		this.buffers.effect.clear();
 		entities.sort((a, b) => a.y - b.y);
 		for (let entity of entities) {
-			this._drawSprite(entity.sprite, entity.x, entity.y);
+			this.drawSprite(entity.sprite, entity.x, entity.y);
 			this._drawHealthBar(entity.health, entity.maxHealth, entity.x, entity.y);
 			for (let wound of entity.wounds) {
 				this._drawWound(wound.damage, wound.age, entity.x, entity.y, wound.rind);
@@ -311,14 +319,14 @@ class Display {
 		}
 	}
 
-	_drawSprite(spritename, x, y) {
+	drawSprite(spritename, x, y) {
 		let sprite = this.spritemap.sprite(spritename);
 		if (sprite) {
 			for (let layer in sprite.layers) {
 				this.buffers[layer].drawSprite(sprite.layers[layer], x, y);
 			}
 		} else {
-			this.buffers.base.fillTile(this._getColor(name), x, y);
+			this.buffers.base.fillTile(this._getColor(spritename), x, y);
 		}
 	}
 
@@ -348,7 +356,7 @@ class Display {
 		this.buffers.fuzz.drawBehind(buffer => buffer.drawSprite(this.fuzzSprite, tileX, tileY));
 		for (let i=sprites.length; i --> 0;) {
 			let name = sprites[i];
-			this._drawSprite(name, tileX, tileY);
+			this.drawSprite(name, tileX, tileY);
 		}
 	}
 
@@ -378,11 +386,12 @@ class Display {
 	_getColor(name){
 		var hash = 583;
 		for (let i=0; i<name.length; ++i) {
-			hash *= 7;
+			hash *= 37;
 			hash += name.charCodeAt(i);
 			hash %= 256 * 256 * 256;
 		}
-		return "#" + hash.toString(16);
+		let color = "#" + hash.toString(16);
+		return color;
 	}
 
 	_border(spriteNames) {
@@ -405,12 +414,18 @@ class Display {
 		this.outerCtx.imageSmoothingEnabled = false;
 		for (let layer of this.layers) {
 			let buffer = this.buffers[layer.name];
+			let area = {
+				x: (this.canvas.width / 2 - centerX + layer.offsetX() * tileSize) | 0,
+				y: (this.canvas.height / 2 - centerY + layer.offsetY() * tileSize) | 0,
+				w: (buffer.canvas.width * tileSize / buffer.resolution) | 0,
+				h: (buffer.canvas.height * tileSize / buffer.resolution) | 0
+			};
 			this.outerCtx.drawImage(
 				buffer.canvas,
-				this.canvas.width / 2 - centerX + layer.offsetX() * tileSize,
-				this.canvas.height / 2 - centerY + layer.offsetY() * tileSize,
-				buffer.canvas.width * tileSize / buffer.resolution,
-				buffer.canvas.height * tileSize / buffer.resolution
+				area.x,
+				area.y,
+				area.w,
+				area.h
 			);
 		}
 	}

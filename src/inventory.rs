@@ -56,8 +56,8 @@ impl Inventory {
 		self.items.insert(target, item);
 	}
 
-	pub fn get_item(&self, index: usize) -> Item {
-		self.items[index].0
+	pub fn get_item(&self, index: usize) -> Option<Item> {
+		Some(self.items.get(index)?.0)
 	}
 	
 	pub fn pay(&mut self, mut cost: HashMap<Item, usize>) -> bool {

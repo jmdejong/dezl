@@ -117,8 +117,10 @@ impl World {
 					}
 				}
 				Plan::Use(index, direction) => {
-					let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
-					self.interact_creature(&id, direction, item);
+					let maybe_item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
+					if let Some(item) = maybe_item {
+						self.interact_creature(&id, direction, item);
+					}
 				}
 				Plan::Fight(direction) => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
