@@ -103,6 +103,7 @@ impl Creature {
 	}
 
 	pub fn attack(&mut self, mut opponent: RefMut<Creature>, time: Timestamp) {
+		self.target = Some(opponent.id);
 		let damage = self.attack;
 		opponent.health -= damage;
 		self.activity = Some(Activity {
@@ -114,7 +115,8 @@ impl Creature {
 			Wound {
 				damage,
 				time,
-				rind: random::randomize_u32(random::randomize_pos(self.pos) + 37 * random::randomize_pos(self.home) + 17 * time.random_seed())
+				rind: random::randomize_u32(random::randomize_pos(self.pos) + 37 * random::randomize_pos(self.home) + 17 * time.random_seed()),
+				by: self.id
 			}
 		);
 	}
@@ -195,7 +197,24 @@ impl Creature {
 	pub fn plan(&mut self, creature_map: &CreatureMap, time: Timestamp) {
 		let home_pos = self.home;
 			match self.mind {
-				Mind::Player => {},
+				Mind::Player => {
+					if self.plan.is_none() {
+						if self.target.is_none() && !self.wounds.is_empty() {
+							self.target = self.wounds.last().map(|wound| wound.by);
+						}
+						if let Some(target_id) = self.target {
+							let Some(target) = creature_map.get_creature(&target_id) else {
+								self.target = None;
+								return;
+							};
+							if self.pos.distance_to(target.pos) > 1 {
+								self.target = None;
+								return;
+							}
+							self.control(Control::Plan(Plan::Fight(self.pos.directions_to(target.pos).first().cloned())));
+						}
+					}
+				},
 				Mind::Idle => {
 					let rind = random::randomize_u32(random::randomize_pos(home_pos) + time.0 as u32);
 					if random::percentage(rind + 543, 10) {
@@ -228,11 +247,8 @@ impl Creature {
 					}
 					if let Some(target_id) = self.target {
 						let target = creature_map.get_creature(&target_id).unwrap();
-						if self.pos == target.pos {
-							self.control(Control::Plan(Plan::Fight(None)));
-						} else if self.pos.distance_to(target.pos) == 1 {
-							let direction: Direction = self.pos.directions_to(target.pos)[0];
-							self.control(Control::Plan(Plan::Fight(Some(direction))));
+						if self.pos.distance_to(target.pos) <= 1 {
+							self.control(Control::Plan(Plan::Fight(self.pos.directions_to(target.pos).first().cloned())));
 						} else {
 							let directions = self.pos.directions_to(target.pos);
 							let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
@@ -338,7 +354,9 @@ pub struct Wound {
 	#[serde(rename="t")]
 	time: Timestamp,
 	#[serde(rename="r")]
-	rind: u32
+	rind: u32,
+	#[serde(rename="b")]
+	by: CreatureId,
 }
 
 
