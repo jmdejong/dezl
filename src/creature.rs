@@ -135,9 +135,8 @@ impl Creature {
 			sprite: self.sprite,
 			blocking: self.blocking,
 			activity: self.activity.clone(),
-			health: self.health.max(0),
-			max_health: self.max_health,
-			wounds: self.wounds.clone(),
+			health: (self.health.max(0), self.max_health),
+			wounds: self.wounds.iter().rev().cloned().collect(),
 		}
 	}
 
@@ -184,7 +183,7 @@ impl Creature {
 	pub fn autoheal_tick(&mut self, now: Timestamp) {
 		if let Some(autoheal) = &mut self.autoheal {
 			if autoheal.next.is_some_and(|next| now >= next) {
-				self.health = (self.health + autoheal.amount).min(self.max_health).max(self.health);
+				self.health = (self.health + autoheal.amount).min(self.max_health).max(self.health).max(0);
 				autoheal.next = None;
 			}
 			if autoheal.next.is_none() && self.health < self.max_health {
@@ -285,10 +284,8 @@ pub struct CreatureView {
 	#[serde(rename="a", skip_serializing_if = "Option::is_none")]
 	pub activity: Option<Activity>,
 	#[serde(rename = "h")]
-	pub health: i32,
-	#[serde(rename = "hh")]
-	pub max_health: i32,
-	#[serde(rename = "w")]
+	pub health: (i32, i32),
+	#[serde(rename = "w", skip_serializing_if = "Vec::is_empty")]
 	pub wounds: Vec<Wound>,
 	#[serde(rename = "b", skip_serializing_if = "Not::not")]
 	pub blocking: bool,

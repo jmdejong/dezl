@@ -330,7 +330,7 @@ class Display {
 		this.buffers.effect.clear();
 		for (let entity of entities) {
 			this.drawSprite(entity.sprite, entity.pos.x, entity.pos.y);
-			this._drawHealthBar(entity.health, entity.maxHealth, entity.pos.x, entity.pos.y);
+			this._drawHealthBar(entity.health[0], entity.health[1], entity.pos.x, entity.pos.y);
 			for (let wound of entity.wounds) {
 				this._drawWound(wound.damage, wound.age, entity.pos, wound.rind);
 			}

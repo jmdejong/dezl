@@ -56,6 +56,7 @@ class Client {
 			ArrowLeft: () => this.act(WEST),
 			KeyD: () => this.act(EAST),
 			ArrowRight: () => this.act(EAST),
+			KeyF: () => this.act(null),
 		}
 		document.addEventListener("keydown", e => {
 			if (document.activeElement.classList.contains("captureinput")){
@@ -185,6 +186,8 @@ class Client {
 		if (m.me) {
 			this.model.setMe(m.me);
 			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;
+			document.getElementById("healthtext").textContent = `${m.me.h[0]}/${m.me.h[1]}`;
+			document.getElementById("healthvalue").style.width = `${m.me.h[0]/m.me.h[1]*100}%`;
 		}
 		if (m.inventory) {
 			this.actionBar.setInventory(m.inventory[0]);

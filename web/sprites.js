@@ -26,7 +26,7 @@ function loadSprites(){
 			rockfloor: {x: 5, y: 1, layer: "ground"},
 			moss: {x: 6, y: 1, layer: "ground"},
 			water: {x: 0, y: 2, border: "#226", layer: "base"},
-			stonefloor: {x: 1, y: 2, layer: "base"},
+			stonefloor: {x: 1, y: 2, border: "#aaa", layer: "base"},
 			woodwall: {x: 3, y: 2, border: "#220", layer: "base"},
 			wall: {x: 4, y: 2, border: "#222", layer: "base"},
 			rock: {x: 5, y: 2, border: "#222", layer: "base"},

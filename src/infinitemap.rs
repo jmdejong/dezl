@@ -132,6 +132,10 @@ impl InfiniteMap {
 		(b_pos, dpos)
 	}
 
+	fn rock_height(&self, pos: Pos) -> f32 {
+		let c = ((self.edge_distance(pos) - EDGE_SIZE) as f32 / 4.0).clamp(0.0, 1.0);
+		math::ease_in_out_cubic(self.heightmaps.rock.height(pos)) * c
+	}
 
 	fn tile(&self, pos: Pos, time: Timestamp) -> Tile {
 		let (bpos, dpos) = self.biome_pos(pos);
@@ -139,173 +143,175 @@ impl InfiniteMap {
 		let rind = WhiteNoise::new(self.seed + 7943).gen(pos);
 		let rtime = WhiteNoise::new(self.seed + 356).gen(pos).wrapping_add(randomtick::tick_num(pos, time) as u32);
 		match biome {
-			Biome::Start => {
-				let dspawn = dpos.abs();
-				if dspawn.x == 0 && dspawn.y == 0 {
-					t!(StoneFloor, MarkerAltar)
-				} else if dspawn.x <= 4 && dspawn.y <= 4 && !(dspawn.y == 4 && dspawn.x == 4){
-					if dspawn.x + dspawn.y <= 5 {
-						t!(StoneFloor)
-					} else {
-						t!(StoneFloor, Wall)
-					}
-				} else if dspawn.x <= 1 || dspawn.y <= 1 {
-					t!(Dirt)
-				} else if Area::centered(Pos::new(9, -8), Pos::new(5, 5)).contains(dpos) {
-					let dhouse = dpos - Pos::new(9, -8);
-					if dhouse == Pos::new(0, -1) {
-						t!(Dirt, Sage)
-					} else if dhouse  == Pos::new(1, 1) {
-						t!(Dirt, GardeningTable)
-					} else if dhouse == Pos::new(0, 2) || dhouse.abs().x < 2 && dhouse.abs().y < 2 {
-						t!(Dirt)
-					} else {
-						t!(Dirt, WoodWall)
-					}
-
-				} else {
-					*pick(rind, &[
-						t!(Grass1),
-						t!(Grass2),
-						t!(Grass3)
-					])
-				}
-			}
-			Biome::Field => {
-				t!(
-					*pick(rind, &[
-						Ground::Grass1,
-						Ground::Grass2,
-						Ground::Grass3
-					]),
-					if WhiteNoise::new(self.seed + 9429).gen_f(pos) < 0.02 {
-						Structure::Shrub
-					} else {
-						*pick_weighted(randomize_u32(randomize_u32(rtime/4).wrapping_add(5924)), &[
-							(Structure::Air, 40),
-							(Structure::DenseGrassGrn, 4),
-							(Structure::DenseGrassBrn, 3),
-							(Structure::DenseGrassY, 3),
-							(Structure::Flower, 1)
-						])
-					}
-				)
-			}
-			Biome::Forest => {
-				*pick_weighted(rind, &[
-					(*pick_weighted(rtime, &[
-						(*pick_weighted(rind, &[
-							(t!(Grass1), 10),
-							(t!(Grass2), 10),
-							(t!(Grass3), 10),
-							(t!(Moss), 40),
-							(t!(DeadLeaves), 40),
-							(t!(Dirt), 30),
-							(t!(Dirt, Structure::Item(Item::Stick)), 1)
-						]), 100),
-						(t!(Grass1, Sapling), 3),
-						(t!(Dirt, YoungTree), 4),
-						(t!(Dirt, Tree), 13),
-						(t!(Dirt, OldTreeTinder), 1),
-						(t!(Dirt), 1)
-					]), 100),
-					(t!(Dirt, Structure::Spawn(Npc::Worm)), 1),
-				])
-			}
-			Biome::Lake => {
-				let c = ((self.edge_distance(pos) - EDGE_SIZE) as f32 / 12.0).clamp(0.0, 1.0);
-				let reed_density = self.heightmaps.reed.height(pos) * 0.4 - 0.2;
-				let height = 0.4 - self.heightmaps.lake.height(pos) + (1.0 - c) * 0.6;
-				if height.abs() < reed_density {
-					t!(
-						if height > 0.0 { Ground::Dirt } else { Ground::Water },
-						if randomtick::tick_num(pos, time).rem_euclid(4) as u32 != rind.rem_euclid(4) {
-							Structure::Reed
-						} else {
-							Structure::Air
-						}
-					)
-				} else if height < 0.0 {
-					t!(Water)
-				} else {
-					*pick_weighted(rind, &[
-						(t!(Grass1), 10),
-						(t!(Grass2), 10),
-						(t!(Grass3), 10),
-						(t!(Grass1, DenseGrassGrn), 3),
-						(t!(Grass2, DenseGrassBrn), 3),
-						(t!(Grass3, DenseGrassY), 3),
-						(t!(Grass1, Shrub), 2)
-					])
-				}
-			}
-			Biome::Rocks => {
-				let min_height = 0.6;
-				let height = self.rock_height(pos);
-				if height > min_height {
-					let ismid = [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]
-						.into_iter()
-						.all(|d| self.rock_height(pos + d) > min_height);
-					t!(
-						Ground::RockFloor,
-						if ismid {
-							Structure::RockMid
-						} else {
-							Structure::Rock
-						}
-					)
-				} else {
-					*pick_weighted((height * 100.0) as u32, &[
-						(*pick_weighted(rind, &[
-							(t!(Grass1), 10),
-							(t!(Grass2), 10),
-							(t!(Dirt), 1),
-							(t!(RockFloor), (height * 10.0) as u32),
-						]), 10),
-						(*pick_weighted(rind, &[
-							(t!(Grass1), 1),
-							(t!(Grass2), 1),
-							(*pick_weighted(rtime, &[
-								(t!(RockFloor, Gravel), 20),
-								(t!(RockFloor), 50),
-								(t!(RockFloor, Stone), 5),
-								(t!(RockFloor, Gravel), 20),
-								(t!(RockFloor), 50),
-								(t!(RockFloor, Structure::Item(Item::Pebble)), 3),
-								(t!(RockFloor), 50),
-							]), 3),
-						]), 50),
-					])
-				}
-			}
-			Biome::Bog => {
-				let height = self.heightmaps.bog.height(pos) + WhiteNoise::new(self.seed+3294).gen_f(pos) * 0.1;
-				if height < 0.45 {
-					t!(Water)
-				} else {
-					*pick_weighted(rind, &[
-						(t!(Grass1), 50),
-						(t!(Grass2), 50),
-						(t!(Grass3), 48),
-						(t!(Grass1, Structure::Spawn(Npc::Frog)), 2),
-						(t!(Grass1, Shrub), 1),
-						(t!(Grass1, Rush), 10),
-						(*pick(
-							rtime / 2,
-							&[
-								t!(Grass1, PitcherPlant),
-								t!(Grass1)
-							]
-						), 1)
-					])
-				}
-			}
+			Biome::Start => self.gen_start(dpos, rind),
+			Biome::Field => self.gen_field(pos, rind, rtime),
+			Biome::Forest => self.gen_forest(rind, rtime),
+			Biome::Lake => self.gen_lake(pos, rind, rtime),
+			Biome::Rocks => self.gen_rocks(pos, rind, rtime),
+			Biome::Bog => self.gen_bog(pos, rind, rtime),
 		}
 	}
 
-	fn rock_height(&self, pos: Pos) -> f32 {
-		let c = ((self.edge_distance(pos) - EDGE_SIZE) as f32 / 4.0).clamp(0.0, 1.0);
-		math::ease_in_out_cubic(self.heightmaps.rock.height(pos)) * c
+	fn gen_start(&self, dpos: Pos, rind: u32) -> Tile {
+		let dspawn = dpos.abs();
+		if dspawn.x == 0 && dspawn.y == 0 {
+			t!(StoneFloor, MarkerAltar)
+		} else if dspawn.x <= 4 && dspawn.y <= 4 && !(dspawn.y == 4 && dspawn.x == 4){
+			if dspawn.x + dspawn.y <= 5 {
+				t!(StoneFloor)
+			} else {
+				t!(StoneFloor, Wall)
+			}
+		} else if dspawn.x <= 1 || dspawn.y <= 1 {
+			t!(Dirt)
+		} else if Area::centered(Pos::new(9, -8), Pos::new(5, 5)).contains(dpos) {
+			let dhouse = dpos - Pos::new(9, -8);
+			if dhouse == Pos::new(0, -1) {
+				t!(Dirt, Sage)
+			} else if dhouse  == Pos::new(1, 1) {
+				t!(Dirt, GardeningTable)
+			} else if dhouse == Pos::new(0, 2) || dhouse.abs().x < 2 && dhouse.abs().y < 2 {
+				t!(Dirt)
+			} else {
+				t!(Dirt, WoodWall)
+			}
+
+		} else {
+			*pick(rind, &[
+				t!(Grass1),
+				t!(Grass2),
+				t!(Grass3)
+			])
+		}
+	}
+	fn gen_field(&self, pos: Pos, rind: u32, rtime: u32) -> Tile {
+		t!(
+			*pick(rind, &[
+				Ground::Grass1,
+				Ground::Grass2,
+				Ground::Grass3
+			]),
+			if WhiteNoise::new(self.seed + 9429).gen_f(pos) < 0.02 {
+				Structure::Shrub
+			} else {
+				*pick_weighted(randomize_u32(randomize_u32(rtime/20).wrapping_add(5924)), &[
+					(Structure::Air, 40),
+					(Structure::DenseGrassGrn, 4),
+					(Structure::DenseGrassBrn, 3),
+					(Structure::DenseGrassY, 3),
+					(Structure::Flower, 1)
+				])
+			}
+		)
+	}
+	fn gen_forest(&self, rind: u32, rtime: u32) -> Tile {
+		*pick_weighted(rind, &[
+			(*pick_weighted(rtime/5, &[
+				(*pick_weighted(rind, &[
+					(t!(Grass1), 10),
+					(t!(Grass2), 10),
+					(t!(Grass3), 10),
+					(t!(Moss), 40),
+					(t!(DeadLeaves), 40),
+					(t!(Dirt), 30),
+					(t!(Dirt, Structure::Item(Item::Stick)), 1)
+				]), 100),
+				(t!(Grass1, Sapling), 3),
+				(t!(Dirt, YoungTree), 4),
+				(t!(Dirt, Tree), 13),
+				(t!(Dirt, OldTreeTinder), 1),
+				(t!(Dirt), 1)
+			]), 100),
+			(t!(Dirt, Structure::Spawn(Npc::Worm)), 1),
+		])
+	}
+	fn gen_lake(&self, pos: Pos, rind: u32, rtime: u32) -> Tile {
+		let c = ((self.edge_distance(pos) - EDGE_SIZE) as f32 / 12.0).clamp(0.0, 1.0);
+		let reed_density = self.heightmaps.reed.height(pos) * 0.4 - 0.2;
+		let height = 0.4 - self.heightmaps.lake.height(pos) + (1.0 - c) * 0.6;
+		if height.abs() < reed_density {
+			t!(
+				if height > 0.0 { Ground::Dirt } else { Ground::Water },
+				if (rtime/5).rem_euclid(4) as u32 == 0 {
+					Structure::Air
+				} else {
+					Structure::Reed
+				}
+			)
+		} else if height < 0.0 {
+			t!(Water)
+		} else {
+			*pick_weighted(rind, &[
+				(t!(Grass1), 10),
+				(t!(Grass2), 10),
+				(t!(Grass3), 10),
+				(t!(Grass1, DenseGrassGrn), 3),
+				(t!(Grass2, DenseGrassBrn), 3),
+				(t!(Grass3, DenseGrassY), 3),
+				(t!(Grass1, Shrub), 2)
+			])
+		}
+	}
+	fn gen_rocks(&self, pos: Pos, rind: u32, rtime: u32) -> Tile {
+		let min_height = 0.6;
+		let height = self.rock_height(pos);
+		if height > min_height {
+			let ismid = [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+				.into_iter()
+				.all(|d| self.rock_height(pos + d) > min_height);
+			t!(
+				Ground::RockFloor,
+				if ismid {
+					Structure::RockMid
+				} else {
+					Structure::Rock
+				}
+			)
+		} else {
+			*pick_weighted((height * 100.0) as u32, &[
+				(*pick_weighted(rind, &[
+					(t!(Grass1), 10),
+					(t!(Grass2), 10),
+					(t!(Dirt), 1),
+					(t!(RockFloor), (height * 10.0) as u32),
+				]), 10),
+				(*pick_weighted(rind, &[
+					(t!(Grass1), 1),
+					(t!(Grass2), 1),
+					(*pick_weighted(rtime/2, &[
+						(t!(RockFloor, Gravel), 20),
+						(t!(RockFloor), 50),
+						(t!(RockFloor, Stone), 5),
+						(t!(RockFloor, Gravel), 20),
+						(t!(RockFloor), 50),
+						(t!(RockFloor, Structure::Item(Item::Pebble)), 3),
+						(t!(RockFloor), 50),
+					]), 3),
+				]), 50),
+			])
+		}
+	}
+	fn gen_bog(&self, pos: Pos, rind: u32, rtime: u32) -> Tile {
+		let height = self.heightmaps.bog.height(pos) + WhiteNoise::new(self.seed+3294).gen_f(pos) * 0.1;
+		if height < 0.45 {
+			t!(Water)
+		} else {
+			*pick_weighted(rind, &[
+				(t!(Grass1), 50),
+				(t!(Grass2), 50),
+				(t!(Grass3), 48),
+				(t!(Grass1, Structure::Spawn(Npc::Frog)), 2),
+				(t!(Grass1, Shrub), 1),
+				(t!(Grass1, Rush), 10),
+				(*pick(
+					rtime / 50,
+					&[
+						t!(Grass1, PitcherPlant),
+						t!(Grass1)
+					]
+				), 1)
+			])
+		}
 	}
 }
 

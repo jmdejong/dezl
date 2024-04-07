@@ -70,20 +70,19 @@ class NoActivity extends Activity {
 }
 
 class Creature {
-	constructor(id, pos, sprite, activity, health, maxHealth, wounds, blocking){
+	constructor(id, pos, sprite, activity, health, wounds, blocking){
 		this.id = id;
 		this.pos = pos;
 		this.sprite = sprite
 		this.activity = activity;
 		this.health = health;
-		this.maxHealth = maxHealth;
 		this.wounds = wounds;
 		this.blocking = blocking;
 	}
 
 	static parse(e) {
-		let wounds = e.w.map(wound => ({damage: wound.d, time: wound.t, rind: wound.r}));
-		return new Creature(e.i, vec2(...e.p), e.s, Activity.parse(e.a), e.h, e.hh, wounds, e.b);
+		let wounds = (e.w || []).map(wound => ({damage: wound.d, time: wound.t, rind: wound.r}));
+		return new Creature(e.i, vec2(...e.p), e.s, Activity.parse(e.a), e.h, wounds, e.b);
 	}
 
 	snapshot(time) {
@@ -92,7 +91,6 @@ class Creature {
 			pos: this.activity.currentPosition(time, this.pos),
 			sprite: this.sprite,
 			health: this.health,
-			maxHealth: this.maxHealth,
 			wounds
 		};
 	}

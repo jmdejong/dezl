@@ -6,7 +6,7 @@ class Inventory:
 
 	def __init__(self, display):
 		self.display = display
-		self.actions = [("<inspect>", None), ("<take>", None)]
+		self.actions = [("<inspect>", None), ("<take>", None), ("<fight>", None)]
 		self.items = []
 		self.selector = 0
 
@@ -37,6 +37,8 @@ class Inventory:
 			return {"inspect": direction}
 		elif self.selector == 1:
 			return {"take": direction}
+		elif self.selector == 2:
+			return {"fight": direction}
 		else:
 			return {"use": [self.selector - len(self.actions), direction]}
 

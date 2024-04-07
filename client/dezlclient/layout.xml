@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <hbox>
 	<vbox width="24" align="right">
-<!-- 		<textbox id="healthtitle" height="1" format="true">Health ({filled}/{total})</textbox> -->
-<!-- 		<bar id="health" height="1" full-char="#" empty-char="_" full-style="fg:2; bg:2" empty-style="fg:1; bg: 1;"></bar> -->
-		<vbox height="2"></vbox>
+		<textbox id="position" height="1" format="true">Position: ({x},{y})</textbox>
+		<textbox id="healthtitle" height="1" format="true">Health ({filled}/{total})</textbox>
+		<bar id="health" height="1" full-char="#" empty-char="_" full-style="fg:2; bg:2" empty-style="fg:1; bg: 1;"></bar>
 		<vbox height="20" key="inventory">
 			<textbox height="1">Inventory:</textbox>
 			<listing id="inventory">

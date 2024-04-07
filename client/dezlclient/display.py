@@ -52,21 +52,26 @@ class Display:
 			pos = (x, y)
 			self.fieldBuffer[pos] = spriteNames
 			if pos in self.knownDynamics:
-				spriteNames = [self.knownDynamics[pos], *spriteNames]
+				spriteNames = [*self.knownDynamics[pos], *spriteNames]
 			brush = self.brush(spriteNames)
 			field.change_cell(x, y, *brush)
 
-	def drawDynamics(self, dynamics):
+	def drawDynamics(self, dynamics, tick):
 		field = self.getWidget("field")
 		previousDynamics = set(self.knownDynamics.keys())
 		self.knownDynamics = {}
 		for d in dynamics:
 			x, y = d["p"]
 			pos = (x, y)
-			sprite = d["s"]
+			sprites = [d["s"]]
+			wounds = d.get("w", [])
+			if len(wounds) > 0:
+				wound = wounds[0]
+				if tick - wound["t"] < 2:
+					sprites.append("wound")
 			previousDynamics.discard(pos)
-			self.knownDynamics[pos] = sprite
-			field.change_cell(x, y, *self.brush([sprite, *self.fieldBuffer.get(pos, [])]))
+			self.knownDynamics[pos] = sprites
+			field.change_cell(x, y, *self.brush([*sprites, *self.fieldBuffer.get(pos, [])]))
 		for (x, y) in previousDynamics:
 			field.change_cell(x, y, *self.brush(self.fieldBuffer.get((x, y), [])))
 	
@@ -84,15 +89,17 @@ class Display:
 	def setFieldCenter(self, pos):
 		self.getWidget("field").set_center(*pos)
 	
-	# def setHealth(self, health, maxHealth):
-	# 	if health is None:
-	# 		health = 0
-	# 	if maxHealth is None:
-	# 		maxHealth = 0
-	# 	self.getWidget("health").set_total(maxHealth)
-	# 	self.getWidget("health").set_filled(health)
-	# 	self.getWidget("healthtitle").format({"filled": health, "total":maxHealth})
-		
+	def setHealth(self, health, maxHealth):
+		if health is None:
+			health = 0
+		if maxHealth is None:
+			maxHealth = 0
+		self.getWidget("health").set_total(maxHealth)
+		self.getWidget("health").set_filled(health)
+		self.getWidget("healthtitle").format({"filled": health, "total":maxHealth})
+
+	def showPosition(self, pos):
+		self.getWidget("position").format({"x": pos[0], "y": pos[1]})
 	
 	def showInfo(self, infostring):
 		self.getWidget("info").set_text(infostring)

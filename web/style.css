@@ -56,20 +56,34 @@ canvas {
 	flex-direction: column;
 }
 
-.coordinates {
+.side > * {
 	border: 2px solid #AAA;
 	background-color: #fffc;
-	right: 0px;
+	margin: 3px 0px;
+	width: 200px;
+	box-sizing: border-box;
+}
+
+.coordinates {
 	text-align: right;
 	padding: 2px;
 }
-
-.actionbar {
-	border: 2px solid #AAA;
-	width: 200px;
-	background-color: #fffc;
+.healthbar {
+	width: 100%;
+	height: 20px;
+	background-color: #e00;
+	box-sizing: border-box;
+	border: 2px solid #888;
 	display: block;
-	margin: 10px 0px;
+	.healthvalue {
+		background-color: #0d0;
+		width: 30%;
+		height: 100%;
+		display: block;
+	}
+}
+.actionbar {
+	display: block;
 }
 .actions {
 	border: 1px solid #AAA;
@@ -84,21 +98,11 @@ canvas {
 }
 .inventory {
 
-/* 	flex: right; */
 	height: 240px;
 	overflow-y: scroll;
-/* 	table-layout: fixed; */
-/* 	position: relative; */
 }
 .inventory-amount {
 	text-align: right;
-/* 	position: absolute; */
-/* 	top: 0; */
-/* 	right: 0; */
-/* 	width: 10%; */
-}
-.inventory-name {
-/* 	width: 100%; */
 }
 .inv-row {
 	display: flex;

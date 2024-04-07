@@ -116,6 +116,7 @@ class Client:
 			self.handleWorldUpdate(message.updates)
 	
 	def handleWorldUpdate(self, m):
+		tick = m["t"]
 		viewArea = m.get('viewarea')
 		if viewArea:
 			area = viewArea["area"]
@@ -133,12 +134,14 @@ class Client:
 
 		dynamics = m.get('dynamics')
 		if dynamics:
-			self.display.drawDynamics(dynamics)
+			self.display.drawDynamics(dynamics, tick)
 
 		me = m.get('me')
 		if me:
 			self.display.setFieldCenter(me["p"])
+			self.display.showPosition(me["p"])
 			self.playerPos = me["p"]
+			self.display.setHealth(*me["h"])
 		
 		inventory = m.get("inventory")
 		if inventory:
