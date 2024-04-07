@@ -61,6 +61,9 @@ class Display:
 		previousDynamics = set(self.knownDynamics.keys())
 		self.knownDynamics = {}
 		for d in dynamics:
+			activity = d.get("a", {})
+			if "D" in activity and tick - activity["s"] > 4:
+				continue
 			x, y = d["p"]
 			pos = (x, y)
 			sprites = [d["s"]]

@@ -329,10 +329,14 @@ class Display {
 		this.buffers.creatures.clear();
 		this.buffers.effect.clear();
 		for (let entity of entities) {
-			this.drawSprite(entity.sprite, entity.pos.x, entity.pos.y);
-			this._drawHealthBar(entity.health[0], entity.health[1], entity.pos.x, entity.pos.y);
+			if (entity.opacity) {
+				this.drawSprite(entity.sprite, entity.pos.x, entity.pos.y);
+				this._drawHealthBar(entity.health[0], entity.health[1], entity.pos.x, entity.pos.y);
+			}
 			for (let wound of entity.wounds) {
-				this._drawWound(wound.damage, wound.age, entity.pos, wound.rind);
+				if (wound.age < 10){
+					this._drawWound(wound.damage, wound.age, entity.pos, wound.rind);
+				}
 			}
 		}
 	}

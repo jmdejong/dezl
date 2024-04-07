@@ -129,6 +129,12 @@ impl Creatures {
 		self.creature_cell(id).map(RefCell::borrow_mut)
 	}
 
+	pub fn dead(&self) -> impl Iterator<Item=Ref<Creature>> {
+		self.spawned_creatures.values()
+			.filter(|s| s.body.borrow().is_dead())
+			.map(|s| s.body.borrow())
+	}
+
 	pub fn spawn(&mut self, pos: Pos, npc: Npc) {
 		let id = SpawnId(pos);
 		if self.spawned_creatures.contains_key(&id) {

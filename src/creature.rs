@@ -40,6 +40,8 @@ pub struct Creature {
 	home: Pos,
 	aggro_distance: i32,
 	give_up_distance: i32,
+	mortal: bool,
+	is_dead: bool
 }
 
 impl Creature {
@@ -68,6 +70,8 @@ impl Creature {
 			home: saved.pos,
 			aggro_distance: -1,
 			give_up_distance: 16,
+			mortal: false,
+			is_dead: false,
 		}
 	}
 
@@ -95,11 +99,13 @@ impl Creature {
 			home: pos,
 			aggro_distance: npc.aggro_distance(),
 			give_up_distance: npc.give_up_distance(),
+			mortal: true,
+			is_dead: false,
 		}
 	}
 	
 	pub fn is_dead(&self) -> bool {
-		self.health <= 0
+		self.is_dead
 	}
 
 	pub fn attack(&mut self, mut opponent: RefMut<Creature>, time: Timestamp) {
@@ -128,6 +134,10 @@ impl Creature {
 			inventory: self.inventory.save(),
 			health: self.health.max(0),
 		}
+	}
+
+	pub fn is_dying(&self, tick: Timestamp) -> bool {
+		self.activity.as_ref().is_some_and(|activity| matches!(activity.typ, ActivityType::Die(_)) && activity.is_active(tick))
 	}
 
 	pub fn view(&self) -> CreatureView {
@@ -182,7 +192,17 @@ impl Creature {
 		self.wounds.retain(|wound| time - wound.time <= Duration(10));
 	}
 
-	pub fn autoheal_tick(&mut self, now: Timestamp) {
+	pub fn update(&mut self, now: Timestamp) {
+		if self.mortal && self.health <= 0 {
+			self.is_dead = true;
+			self.activity = Some(Activity {
+				typ: ActivityType::Die(true),
+				start: now,
+				end: now + Duration(10)
+			});
+			return;
+		}
+
 		if let Some(autoheal) = &mut self.autoheal {
 			if autoheal.next.is_some_and(|next| now >= next) {
 				self.health = (self.health + autoheal.amount).min(self.max_health).max(self.health).max(0);
@@ -328,17 +348,6 @@ impl Faction {
 	}
 }
 
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct Activity {
-	#[serde(flatten)]
-	pub typ: ActivityType,
-	#[serde(rename = "s")]
-	pub start: Timestamp,
-	#[serde(rename = "e")]
-	pub end: Timestamp,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum ActivityType {
 	#[serde(rename = "M")]
@@ -350,6 +359,23 @@ pub enum ActivityType {
 		#[serde(rename="d")]
 		damage: i32,
 	},
+	#[serde(rename = "D")]
+	Die(bool),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct Activity {
+	#[serde(flatten)]
+	pub typ: ActivityType,
+	#[serde(rename = "s")]
+	pub start: Timestamp,
+	#[serde(rename = "e")]
+	pub end: Timestamp,
+}
+impl Activity {
+	pub fn is_active(&self, tick: Timestamp) -> bool {
+		tick <= self.end
+	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -363,9 +389,6 @@ pub struct Wound {
 	#[serde(rename="b")]
 	by: CreatureId,
 }
-
-
-
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Assoc, Serialize, Deserialize)]

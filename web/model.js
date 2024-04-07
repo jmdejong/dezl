@@ -20,6 +20,8 @@ class Activity {
 			return new WalkActivity(a.s, a.e, vec2(...a.M));
 		} else if (a.F) {
 			return new FightActivity(a.s, a.e, vec2(...a.F.t));
+		} else if (a.D) {
+			return new DieActivity(a.s, a.e);
 		} else {
 			console.error("Unknown activity", a);
 			return new NoActivity();
@@ -29,8 +31,8 @@ class Activity {
 	isActive(time) {
 		return time >= this.start && time <= this.end;
 	}
-	progress(time) {
-		return clamp((time - this.start) / this.duration, 0, 1);
+	progress(time, max) {
+		return clamp((time - this.start) / Math.min(this.duration, max || Infinity), 0, 1);
 	}
 	currentPosition(time, pos) {
 		return pos;
@@ -38,8 +40,18 @@ class Activity {
 	corePosition(time, pos) {
 		return pos;
 	}
+	opacity(time) {
+		return 1;
+	}
 }
-
+class NoActivity extends Activity {
+	isActive(_time) {
+		return false;
+	}
+	progress(_time) {
+		return 1;
+	}
+}
 class WalkActivity extends Activity {
 	constructor(start, end, origin) {
 		super(start, end);
@@ -52,25 +64,19 @@ class WalkActivity extends Activity {
 		return this.currentPosition(time, pos);
 	}
 }
-
 class FightActivity extends Activity {
 	constructor(start, end, target) {
 		super(start, end);
 		this.target = target;
 	}
-	currentPosition(time, pos) {
-		let progress = clamp((time - this.start) / Math.min(this.duration, 5), 0, 1);
-		let d = Math.max(0, 0.5 - Math.abs(progress-0.5));
+	currentPosition(time, pos) {;
+		let d = Math.max(0, 0.5 - Math.abs(this.progress(time, 5)-0.5));
 		return pos.lerp(this.target, d);
 	}
 }
-
-class NoActivity extends Activity {
-	isActive(_time) {
-		return false;
-	}
-	progress(_time) {
-		return 1;
+class DieActivity extends Activity {
+	opacity(time) {
+		return 1 - this.progress(time, 10);
 	}
 }
 
@@ -96,6 +102,7 @@ class Creature {
 			pos: this.activity.currentPosition(time, this.pos),
 			sprite: this.sprite,
 			health: this.health,
+			opacity: this.activity.opacity(time),
 			wounds
 		};
 	}

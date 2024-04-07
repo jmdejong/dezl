@@ -72,9 +72,6 @@ impl World {
 
 	fn update_creatures(&mut self) {
 
-		for mut creature in self.creatures.all_mut() {
-			creature.autoheal_tick(self.time);
-		}
 
 		let mut creature_map = CreatureMap::new(self.creatures.all());
 		for mut creature in self.creatures.all_mut() {
@@ -139,6 +136,10 @@ impl World {
 				}
 				Plan::Stop => {}
 			}
+		}
+
+		for mut creature in self.creatures.all_mut() {
+			creature.update(self.time);
 		}
 	}
 
@@ -255,7 +256,9 @@ impl World {
 	pub fn view(&self) -> HashMap<PlayerId, WorldMessage> {
 		let changes = self.draw_changes();
 		let mut views: HashMap<PlayerId, WorldMessage> = HashMap::new();
-		let dynamics: Vec<CreatureView> = self.creatures.all()
+		let dynamics: Vec<CreatureView> = self.creatures.dead()
+			.filter(|c| c.is_dying(self.time))
+			.chain(self.creatures.all())
 			.map(|creature| creature.view())
 			.collect();
 		for (id, body) in self.creatures.iter_players() {
