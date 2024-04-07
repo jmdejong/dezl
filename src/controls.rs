@@ -11,8 +11,6 @@ use crate::{
 #[serde(rename_all="lowercase")]
 pub enum Plan {
 	Move(Direction),
-	Movement(Direction),
-	Stop,
 	Use(usize, Option<Direction>),
 	Take(Option<Direction>),
 	Inspect(Option<Direction>),
@@ -23,6 +21,7 @@ pub enum Plan {
 #[serde(rename_all="lowercase")]
 pub enum DirectChange {
 	MoveItem(usize, usize),
+	Movement(Option<Direction>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

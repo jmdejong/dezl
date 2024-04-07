@@ -71,8 +71,6 @@ impl World {
 	
 
 	fn update_creatures(&mut self) {
-
-
 		let mut creature_map = CreatureMap::new(self.creatures.all());
 		for mut creature in self.creatures.all_mut() {
 			creature.plan(&creature_map, self.time);
@@ -81,17 +79,23 @@ impl World {
 
 		for id in creatures {
 			let plan = {
-				let Some(creature) = self.creatures.get_creature_mut(&id) else { continue };
+				let Some(mut creature) = self.creatures.get_creature_mut(&id) else { continue };
 				if !creature.can_act(self.time) {
 					continue;
 				}
-				let Some(plan) = &creature.plan
+				let Some(plan) = creature.plan.take()
 					else { continue };
-				plan.clone()
+				plan
 			};
 			match plan {
-				Plan::Move(direction) | Plan::Movement(direction)=> {
-					self.move_creature(&id, direction, &mut creature_map);
+				Plan::Move(direction) => {
+					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+					let newpos = creature.pos + direction;
+					let tile = self.ground.cell(newpos);
+					if !tile.blocking() && !creature_map.blocking(&newpos, &creature) {
+						creature_map.move_creature(id, &creature, &creature.pos, newpos);
+						creature.move_to(newpos, self.time);
+					}
 				}
 				Plan::Inspect(direction) => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
@@ -134,22 +138,11 @@ impl World {
 						creature.attack(self.creatures.get_creature_mut(&opponent.id).unwrap(), self.time);
 					}
 				}
-				Plan::Stop => {}
 			}
 		}
 
 		for mut creature in self.creatures.all_mut() {
 			creature.update(self.time);
-		}
-	}
-
-	fn move_creature(&mut self, id: &CreatureId, direction: Direction, creature_map: &mut CreatureMap) {
-		let mut creature = self.creatures.get_creature_mut(id).unwrap();
-		let newpos = creature.pos + direction;
-		let tile = self.ground.cell(newpos);
-		if !tile.blocking() && !creature_map.blocking(&newpos, &creature) {
-			creature_map.move_creature(*id, &creature, &creature.pos, newpos);
-			creature.move_to(newpos, self.time);
 		}
 	}
 

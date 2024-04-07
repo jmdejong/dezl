@@ -148,7 +148,7 @@ class Client {
 
 	stop() {
 		this.direction = null;
-		this.sendInput("stop");
+		this.sendInput({"movement": null});
 	}
 
 	act(direction) {

@@ -41,7 +41,8 @@ pub struct Creature {
 	aggro_distance: i32,
 	give_up_distance: i32,
 	mortal: bool,
-	is_dead: bool
+	is_dead: bool,
+	movement: Option<Direction>
 }
 
 impl Creature {
@@ -72,6 +73,7 @@ impl Creature {
 			give_up_distance: 16,
 			mortal: false,
 			is_dead: false,
+			movement: None,
 		}
 	}
 
@@ -101,6 +103,7 @@ impl Creature {
 			give_up_distance: npc.give_up_distance(),
 			mortal: true,
 			is_dead: false,
+			movement: None,
 		}
 	}
 	
@@ -173,6 +176,13 @@ impl Creature {
 		match control {
 			Control::Plan(plan) => self.plan = Some(plan),
 			Control::Direct(DirectChange::MoveItem(from, target)) => self.inventory.move_item(from, target),
+			Control::Direct(DirectChange::Movement(Some(direction))) => {
+				self.plan = Some(Plan::Move(direction));
+				self.movement = Some(direction);
+			},
+			Control::Direct(DirectChange::Movement(None)) => {
+				self.movement = None;
+			}
 		}
 	}
 
@@ -181,10 +191,6 @@ impl Creature {
 	}
 
 	pub fn reset(&mut self, time: Timestamp) {
-		if let Some(Plan::Movement(_)) = self.plan {
-		} else {
-			self.plan = None;
-		}
 		self.heard_sounds = Vec::new();
 		if self.activity.as_ref().is_some_and(|activity| time > activity.end) {
 			self.activity = None;
@@ -219,6 +225,10 @@ impl Creature {
 			match self.mind {
 				Mind::Player => {
 					if self.plan.is_none() {
+						if let Some(direction) = self.movement {
+							self.control(Control::Plan(Plan::Move(direction)));
+							return;
+						}
 						if self.target.is_none() {
 							for wound in self.wounds.iter().rev() {
 								let age = time - wound.time;
