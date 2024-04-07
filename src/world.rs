@@ -349,7 +349,7 @@ impl CreatureMap {
 
 	pub fn blocking(&self, pos: &Pos, creature: &Creature) -> bool {
 		self.map.get(pos)
-			.is_some_and(|creatures| creatures.values().any(|c| c.id != creature.id && c.blocking))
+			.is_some_and(|creatures| creatures.values().any(|c| c.id != creature.id && (c.blocking || creature.blocking)))
 	}
 
 

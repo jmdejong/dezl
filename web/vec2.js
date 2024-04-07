@@ -48,7 +48,7 @@ class Vec2 {
 	}
 
 	lerp(to, d) {
-		return this.mul(1-d).add(to.mul(d));
+		return new Vec2(this.x*(1-d) + to.x*d, this.y*(1-d) + to.y*d);
 	}
 
 	clone() {
