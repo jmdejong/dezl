@@ -1,5 +1,9 @@
 "use strict";
 
+function clamp(v, lo, hi) {
+	return Math.max(lo, Math.min(hi, v));
+}
+
 
 class Activity {
 
@@ -26,7 +30,7 @@ class Activity {
 		return time >= this.start && time <= this.end;
 	}
 	progress(time) {
-		return Math.max(0, Math.min(1, (time - this.start) / this.duration));
+		return clamp((time - this.start) / this.duration, 0, 1);
 	}
 	currentPosition(time, pos) {
 		return pos;
@@ -55,7 +59,8 @@ class FightActivity extends Activity {
 		this.target = target;
 	}
 	currentPosition(time, pos) {
-		let d = Math.max(0, 0.25 - Math.abs(this.progress(time)-0.25))*2;
+		let progress = clamp((time - this.start) / Math.min(this.duration, 5), 0, 1);
+		let d = Math.max(0, 0.5 - Math.abs(progress-0.5));
 		return pos.lerp(this.target, d);
 	}
 }

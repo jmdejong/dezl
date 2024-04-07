@@ -199,8 +199,13 @@ impl Creature {
 			match self.mind {
 				Mind::Player => {
 					if self.plan.is_none() {
-						if self.target.is_none() && !self.wounds.is_empty() {
-							self.target = self.wounds.last().map(|wound| wound.by);
+						if self.target.is_none() {
+							for wound in self.wounds.iter().rev() {
+								let age = time - wound.time;
+								if age >= Duration(2) {
+									self.target = Some(wound.by);
+								}
+							}
 						}
 						if let Some(target_id) = self.target {
 							let Some(target) = creature_map.get_creature(&target_id) else {
