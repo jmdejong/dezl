@@ -145,7 +145,7 @@ class DrawBuffer {
 	}
 	fillRect(color, area) {
 		this.ctx.fillStyle = color;
-		let a = this.fromWorld(area);
+		let a = this.fromWorld(area).round();
 		this.ctx.fillRect(a.x, a.y, a.w, a.h);
 	}
 
@@ -194,7 +194,6 @@ class DrawBuffer {
 
 	move(area) {
 		this.area = Area.fromCorners(area.origin().floor(), area.max().ceil());
-		// console.log(this.area);
 		this.canvas.width = this.area.w * this.resolution;
 		this.canvas.height = this.area.h * this.resolution;
 		this.ctx.imageSmoothingEnabled = false;
@@ -357,10 +356,14 @@ class Display {
 			return;
 		}
 		let ratio = health / maxHealth;
+		let width = 1;
 		let height = 1/8;
 		let offset = 1/8;
-		let area = new Area(x, y-height-offset, 1, height);
-		let [green, red] = area.divideY(ratio);
+		let ytop = y - height - offset;
+		let res = this.buffers.effect.resolution;
+		let splitX = Math.round((ratio * width) * res) / res + x;
+		let green = new Area(x, ytop, splitX - x, height);
+		let red = new Area(splitX, ytop, x + width - splitX, height);
 		this.buffers.effect.fillRect("#0f0", green);
 		this.buffers.effect.fillRect("#c00", red);
 	}

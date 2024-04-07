@@ -116,9 +116,11 @@ class Area {
 	sub(v) {
 		return new Area(this.x - v.x, this.y - v.y, this.w, this.h);
 	}
-	divideY(xRel) {
-		let x = xRel * this.w + this.x;
-		return [new Area(this.x, this.y, x - this.x, this.h), new Area(x, this.y, this.x + this.w - x, this.h)];
+	round() {
+		return Area.fromCorners(this.origin().round(), this.max().round());
+	}
+	floor() {
+		return Area.fromCorners(this.origin().floor(), this.max().floor());
 	}
 }
 
