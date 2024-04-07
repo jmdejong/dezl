@@ -2,12 +2,12 @@
 use std::collections::HashMap;
 use serde::Serialize;
 use crate::{
-	Pos,
+	pos::Pos,
 	pos::Area,
-	Sprite,
-	PlayerId,
+	sprite::Sprite,
+	player::PlayerId,
 	timestamp::Timestamp,
-	creature::{CreatureView},
+	creature::CreatureView,
 	map::SectionView,
 };
 

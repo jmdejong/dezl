@@ -73,7 +73,9 @@ impl World {
 	fn update_creatures(&mut self) {
 		let mut creature_map = CreatureMap::new(self.creatures.all());
 		for mut creature in self.creatures.all_mut() {
-			creature.plan(&creature_map, self.time);
+			if creature.can_act(self.time) {
+				creature.plan(&creature_map, &self.ground, self.time);
+			}
 		}
 		let creatures: Vec<CreatureId> = self.creatures.all().map(|creature| creature.id).collect();
 
@@ -92,8 +94,8 @@ impl World {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
 					let newpos = creature.pos + direction;
 					let tile = self.ground.cell(newpos);
-					if !tile.blocking() && !creature_map.blocking(&newpos, &creature) {
-						creature_map.move_creature(id, &creature, &creature.pos, newpos);
+					if !tile.blocking() && !creature_map.blocking(newpos, &CreatureTile::new(&creature)) {
+						creature_map.move_creature(&creature, &creature.pos, newpos);
 						creature.move_to(newpos, self.time);
 					}
 				}
@@ -321,7 +323,7 @@ impl CreatureMap {
 	pub fn new<'a>(creatures: impl Iterator<Item=Ref<'a, Creature>>) -> Self {
 		let mut map = Self { map: HashMap::new(), all: HashMap::new() };
 		for creature in creatures {
-			map.insert(creature.pos, creature.id, &creature);
+			map.insert(creature.pos, &creature);
 		}
 		map
 	}
@@ -340,27 +342,27 @@ impl CreatureMap {
 			.flat_map(|(_, creatures)| creatures.values())
 	}
 
-	pub fn blocking(&self, pos: &Pos, creature: &Creature) -> bool {
-		self.map.get(pos)
+	pub fn blocking(&self, pos: Pos, creature: &CreatureTile) -> bool {
+		self.map.get(&pos)
 			.is_some_and(|creatures| creatures.values().any(|c| c.id != creature.id && (c.blocking || creature.blocking)))
 	}
 
 
-	pub fn move_creature(&mut self, id: CreatureId, creature: &Creature, from: &Pos, to: Pos) {
+	pub fn move_creature(&mut self, creature: &Creature, from: &Pos, to: Pos) {
 		if let Some(creatures) = self.map.get_mut(from) {
-			creatures.remove(&id);
+			creatures.remove(&creature.id);
 			if creatures.is_empty() {
 				self.map.remove(from);
 			}
 		}
-		self.insert(to, id, creature);
+		self.insert(to, creature);
 	}
 
-	fn insert(&mut self, pos: Pos, id: CreatureId, creature: &Creature) {
-		let mut tile = CreatureTile::new(id, creature);
+	fn insert(&mut self, pos: Pos, creature: &Creature) {
+		let mut tile = CreatureTile::new(creature);
 		tile.pos = pos;
-		self.map.entry(pos).or_default().insert(id, tile);
-		self.all.insert(id, tile);
+		self.map.entry(pos).or_default().insert(creature.id, tile);
+		self.all.insert(creature.id, tile);
 	}
 }
 
@@ -374,9 +376,9 @@ pub struct CreatureTile {
 }
 
 impl CreatureTile {
-	fn new(id: CreatureId, creature: &Creature) -> Self {
+	pub fn new(creature: &Creature) -> Self {
 		Self {
-			id,
+			id: creature.id,
 			pos: creature.pos,
 			faction: creature.faction,
 			blocking: creature.blocking,

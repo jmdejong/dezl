@@ -37,10 +37,9 @@ mod world;
 mod worldmessages;
 
 use self::{
-	pos::{Pos, Direction},
+	pos::Pos,
 	player::PlayerId,
-	errors::{Result},
-	sprite::Sprite,
+	errors::Result,
 	
 	gameserver::{GameServer, ErrTyp, ServerMessage},
 	server::ServerEnum,

@@ -3,7 +3,7 @@
 use serde::{Serialize, Deserialize};
 use crate::{
 	PlayerId,
-	Direction
+	pos::{Direction, Pos},
 };
 
 
@@ -22,6 +22,7 @@ pub enum Plan {
 pub enum DirectChange {
 	MoveItem(usize, usize),
 	Movement(Option<Direction>),
+	Path(Vec<Pos>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

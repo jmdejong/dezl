@@ -12,7 +12,8 @@ use crate::{
 	timestamp::Timestamp,
 	controls::{Control, Plan, DirectChange},
 	creatures::CreatureId,
-	world::CreatureMap,
+	world::{CreatureMap, CreatureTile},
+	map::Map,
 	random,
 };
 
@@ -42,7 +43,8 @@ pub struct Creature {
 	give_up_distance: i32,
 	mortal: bool,
 	is_dead: bool,
-	movement: Option<Direction>
+	movement: Option<Direction>,
+	path: Vec<Pos>,
 }
 
 impl Creature {
@@ -74,6 +76,7 @@ impl Creature {
 			mortal: false,
 			is_dead: false,
 			movement: None,
+			path: Vec::new(),
 		}
 	}
 
@@ -104,6 +107,7 @@ impl Creature {
 			mortal: true,
 			is_dead: false,
 			movement: None,
+			path: Vec::new(),
 		}
 	}
 	
@@ -174,7 +178,10 @@ impl Creature {
 
 	pub fn control(&mut self, control: Control) {
 		match control {
-			Control::Plan(plan) => self.plan = Some(plan),
+			Control::Plan(plan) => {
+				self.plan = Some(plan);
+				self.path = Vec::new();
+			}
 			Control::Direct(DirectChange::MoveItem(from, target)) => self.inventory.move_item(from, target),
 			Control::Direct(DirectChange::Movement(Some(direction))) => {
 				self.plan = Some(Plan::Move(direction));
@@ -182,6 +189,14 @@ impl Creature {
 			},
 			Control::Direct(DirectChange::Movement(None)) => {
 				self.movement = None;
+			}
+			Control::Direct(DirectChange::Path(mut path)) => {
+				path.retain(|p| self.pos.distance_to(*p) <= 64);
+				path.truncate(32);
+				if let Some(idx) = path.iter().position(|p| *p == self.pos) {
+					path.drain(..(idx+1));
+				}
+				self.path = path;
 			}
 		}
 	}
@@ -220,86 +235,119 @@ impl Creature {
 		}
 	}
 
-	pub fn plan(&mut self, creature_map: &CreatureMap, time: Timestamp) {
-		let home_pos = self.home;
-			match self.mind {
-				Mind::Player => {
-					if self.plan.is_none() {
-						if let Some(direction) = self.movement {
-							self.control(Control::Plan(Plan::Move(direction)));
+	pub fn plan(&mut self, creature_map: &CreatureMap, map: &Map, time: Timestamp) {
+		let ct = CreatureTile::new(self);
+		let can_walk = |d: &Direction| {
+			let p = self.pos + *d;
+			!creature_map.blocking(p, &ct) && !map.cell(p).blocking()
+		};
+		let rind = random::randomize_u32(random::randomize_pos(self.home) + random::randomize_pos(self.pos) + time.0 as u32);
+		match self.mind {
+			Mind::Player => {
+				if self.plan.is_none() {
+					if let Some(direction) = self.movement {
+						self.plan = Some(Plan::Move(direction));
+						self.path = Vec::new();
+						return;
+					}
+					while let Some(path_next) = self.path.first() {
+						if *path_next == self.pos {
+							self.path.remove(0);
+							continue;
+						}
+						let directions: Vec<Direction> = self.pos.directions_to(*path_next)
+							.into_iter()
+							.filter(can_walk)
+							.collect();
+						if directions.is_empty() {
+							break;
+						}
+						let direction = *random::pick(random::randomize_u32(rind + 2849), &directions);
+						self.plan = Some(Plan::Move(direction));
+						return
+					}
+
+					if self.target.is_none() {
+						for wound in self.wounds.iter().rev() {
+							let age = time - wound.time;
+							if age >= Duration(2) {
+								self.target = Some(wound.by);
+							}
+						}
+					}
+					if let Some(target_id) = self.target {
+						let Some(target) = creature_map.get_creature(&target_id) else {
+							self.target = None;
+							return;
+						};
+						if self.pos.distance_to(target.pos) > 1 {
+							self.target = None;
 							return;
 						}
-						if self.target.is_none() {
-							for wound in self.wounds.iter().rev() {
-								let age = time - wound.time;
-								if age >= Duration(2) {
-									self.target = Some(wound.by);
-								}
-							}
-						}
-						if let Some(target_id) = self.target {
-							let Some(target) = creature_map.get_creature(&target_id) else {
-								self.target = None;
-								return;
-							};
-							if self.pos.distance_to(target.pos) > 1 {
-								self.target = None;
-								return;
-							}
-							self.control(Control::Plan(Plan::Fight(self.pos.directions_to(target.pos).first().cloned())));
-						}
-					}
-				},
-				Mind::Idle => {
-					let rind = random::randomize_u32(random::randomize_pos(home_pos) + time.0 as u32);
-					if random::percentage(rind + 543, 10) {
-						let directions = if self.pos != home_pos && random::percentage(rind + 471, 10) {
-								self.pos.directions_to(home_pos)
-							} else {
-								vec![Direction::North, Direction::South, Direction::East, Direction::West]
-							};
-						let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
-						let control = Plan::Move(direction);
-						self.control(Control::Plan(control));
+						self.plan = Some(Plan::Fight(self.pos.directions_to(target.pos).first().cloned()));
 					}
 				}
-				Mind::Aggressive => {
-					let rind = random::randomize_u32(random::randomize_pos(home_pos) + time.0 as u32);
-					if let Some(target_id) = self.target {
-						if let Some(target) = creature_map.get_creature(&target_id) {
-							if self.pos.distance_to(target.pos) > self.give_up_distance {
-								self.target = None;
-							}
-						} else  {
-							self.target = None;
-						}
-					}
-					if self.target.is_none() {
-						self.target = creature_map.nearby(self.pos, self.aggro_distance)
-							.filter(|other| self.faction.is_enemy(other.faction))
-							.min_by_key(|other| self.pos.distance_to(other.pos))
-							.map(|other| other.id);
-					}
-					if let Some(target_id) = self.target {
-						let target = creature_map.get_creature(&target_id).unwrap();
-						if self.pos.distance_to(target.pos) <= 1 {
-							self.control(Control::Plan(Plan::Fight(self.pos.directions_to(target.pos).first().cloned())));
+			},
+			Mind::Idle => {
+				if random::percentage(rind + 543, 10) {
+					let directions = if self.pos != self.home && random::percentage(rind + 471, 10) {
+							self.pos.directions_to(self.home)
 						} else {
-							let directions = self.pos.directions_to(target.pos);
-							let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
-							self.control(Control::Plan(Plan::Move(direction)));
-						}
-					} else if random::percentage(rind + 543, 10) {
-						let directions = if self.pos != home_pos && random::percentage(rind + 471, 10) {
-								self.pos.directions_to(home_pos)
-							} else {
-								vec![Direction::North, Direction::South, Direction::East, Direction::West]
-							};
-						let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
-						self.control(Control::Plan(Plan::Move(direction)));
-					}
+							vec![Direction::North, Direction::South, Direction::East, Direction::West]
+						};
+					let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
+					let control = Plan::Move(direction);
+					self.plan = Some(control);
 				}
 			}
+			Mind::Aggressive => {
+				if let Some(target_id) = self.target {
+					if let Some(target) = creature_map.get_creature(&target_id) {
+						if self.pos.distance_to(target.pos) > self.give_up_distance {
+							self.target = None;
+						}
+					} else  {
+						self.target = None;
+					}
+				}
+				if self.target.is_none() {
+					self.target = creature_map.nearby(self.pos, self.aggro_distance)
+						.filter(|other| self.faction.is_enemy(other.faction))
+						.min_by_key(|other| self.pos.distance_to(other.pos))
+						.map(|other| other.id);
+				}
+				if let Some(target_id) = self.target {
+					let target = creature_map.get_creature(&target_id).unwrap();
+					if self.pos.distance_to(target.pos) <= 1 {
+						self.plan = Some(Plan::Fight(self.pos.directions_to(target.pos).first().cloned()));
+					} else {
+						let mut directions: Vec<Direction> = self.pos.directions_to(target.pos)
+							.into_iter()
+							.filter(can_walk)
+							.collect();
+						if directions.is_empty() {
+							directions = Direction::DIRECTIONS
+								.into_iter()
+								.filter(can_walk)
+								.collect();
+							if directions.is_empty() {
+								return;
+							}
+						}
+						let direction = *random::pick(random::randomize_u32(rind + 386), &directions);
+						self.plan = Some(Plan::Move(direction));
+					}
+				} else if random::percentage(rind + 543, 10) {
+					let directions = if self.pos != self.home && random::percentage(rind + 471, 10) {
+							self.pos.directions_to(self.home)
+						} else {
+							vec![Direction::North, Direction::South, Direction::East, Direction::West]
+						};
+					let direction = *random::pick(random::randomize_u32(rind + 385), &directions);
+					self.plan = Some(Plan::Move(direction));
+				}
+			}
+		}
 	}
 }
 
@@ -428,7 +476,7 @@ pub enum Npc {
 	#[assoc(health = 12)]
 	#[assoc(attack = 3)]
 	#[assoc(aggro_distance = 4)]
-	#[assoc(give_up_distance = 16)]
+	#[assoc(give_up_distance = 10)]
 	Worm
 }
 
