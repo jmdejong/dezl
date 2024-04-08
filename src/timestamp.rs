@@ -7,6 +7,10 @@ use crate::random;
 pub struct Timestamp(pub i64);
 
 impl Timestamp {
+	pub fn zero() -> Self {
+		Self(0)
+	}
+
 	pub fn increment(&mut self) {
 		self.0 += 1;
 	}

@@ -7,7 +7,7 @@ use crate::{
 	PlayerId,
 	controls::{Control},
 	pos::Pos,
-	creature::{Creature, PlayerSave, Npc},
+	creature::{Creature, PlayerSave, CreatureType as Npc},
 	loadedareas::LoadedAreas,
 	timestamp::{Timestamp, Duration},
 };

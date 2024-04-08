@@ -12,117 +12,75 @@ use crate::{
 	timestamp::Timestamp,
 	controls::{Control, Plan, DirectChange},
 	creatures::CreatureId,
-	world::{CreatureMap, CreatureTile},
+	creaturemap::{CreatureMap, CreatureTile},
 	map::Map,
 	random,
 };
 
 #[derive(Debug, Clone)]
 pub struct Creature {
+	typ: CreatureType,
 	pub id: CreatureId,
 	pub pos: Pos,
-	walk_cooldown: Duration,
-	attack_cooldown: Duration,
-	sprite: Sprite,
 	pub inventory: Inventory,
 	pub heard_sounds: Vec<(SoundType, String)>,
 	activity: Option<Activity>,
 	pub plan: Option<Plan>,
 	pub name: String,
-	pub blocking: bool,
-	pub faction: Faction,
-	attack: i32,
 	health: i32,
-	max_health: i32,
-	autoheal: Option<AutoHeal>,
+	last_autoheal: Timestamp,
 	wounds: Vec<Wound>,
-	mind: Mind,
 	target: Option<CreatureId>,
 	home: Pos,
-	aggro_distance: i32,
-	give_up_distance: i32,
-	mortal: bool,
 	is_dead: bool,
 	movement: Option<Direction>,
 	path: Vec<Pos>,
 }
 
 impl Creature {
-	
-	pub fn load_player(id: CreatureId, saved: PlayerSave) -> Self {
-		Self {
-			id,
-			pos: saved.pos,
-			walk_cooldown: Duration(2),
-			attack_cooldown: Duration(10),
-			sprite: Sprite::PlayerDefault,
-			inventory: Inventory::load(saved.inventory),
-			heard_sounds: Vec::new(),
-			activity: None,
-			plan: None,
-			name: saved.name,
-			blocking: false,
-			faction: Faction::Player,
-			health: saved.health,
-			max_health: 100,
-			wounds: Vec::new(),
-			attack: 5,
-			autoheal: Some(AutoHeal { cooldown: Duration(100), amount: 1, next: None }),
-			mind: Mind::Player,
-			target: None,
-			home: saved.pos,
-			aggro_distance: -1,
-			give_up_distance: 16,
-			mortal: false,
-			is_dead: false,
-			movement: None,
-			path: Vec::new(),
-		}
-	}
 
-	pub fn spawn_npc(id: CreatureId, pos: Pos, npc: Npc) -> Self {
+	pub fn spawn_npc(id: CreatureId, pos: Pos, typ: CreatureType) -> Self {
 		Self {
+			typ,
 			id,
 			pos,
-			walk_cooldown: npc.walk_cooldown(),
-			attack_cooldown: npc.attack_cooldown(),
-			sprite: npc.sprite(),
 			inventory: Inventory::empty(),
 			heard_sounds: Vec::new(),
 			activity: None,
 			plan: None,
-			name: npc.name().to_string(),
-			blocking: npc.blocking(),
-			faction: npc.faction(),
-			health: npc.health(),
-			max_health: npc.health(),
+			name: typ.name().to_string(),
+			health: typ.health(),
 			wounds: Vec::new(),
-			attack: npc.attack(),
-			autoheal: None,
-			mind: npc.mind(),
 			target: None,
 			home: pos,
-			aggro_distance: npc.aggro_distance(),
-			give_up_distance: npc.give_up_distance(),
-			mortal: true,
 			is_dead: false,
 			movement: None,
 			path: Vec::new(),
+			last_autoheal: Timestamp::zero(),
 		}
 	}
-	
+
+	pub fn load_player(id: CreatureId, saved: PlayerSave) -> Self {
+		Self {
+			name: saved.name,
+			inventory: Inventory::load(saved.inventory),
+			health: saved.health,
+			..Self::spawn_npc(id, saved.pos, CreatureType::Player)
+		}
+	}
+
 	pub fn is_dead(&self) -> bool {
 		self.is_dead
 	}
 
 	pub fn attack(&mut self, mut opponent: RefMut<Creature>, time: Timestamp) {
 		self.target = Some(opponent.id);
-		let damage = self.attack;
+		let damage = self.typ.attack();
 		opponent.health -= damage;
 		self.activity = Some(Activity {
 			typ: ActivityType::Attack{ target: opponent.pos, damage },
 			start: time,
-			end: time + self.attack_cooldown
+			end: time + self.typ.attack_cooldown()
 		});
 		opponent.wounds.push(
 			Wound {
@@ -151,10 +109,10 @@ impl Creature {
 		CreatureView {
 			id: self.id,
 			pos: self.pos,
-			sprite: self.sprite,
-			blocking: self.blocking,
+			sprite: self.typ.sprite(),
+			blocking: self.blocking(),
 			activity: self.activity.clone(),
-			health: (self.health.max(0), self.max_health),
+			health: (self.health.max(0), self.typ.health()),
 			wounds: self.wounds.iter().rev().cloned().collect(),
 		}
 	}
@@ -163,7 +121,7 @@ impl Creature {
 		self.activity = Some(Activity {
 			typ: ActivityType::Walk(self.pos),
 			start: time,
-			end: time + self.walk_cooldown
+			end: time + self.typ.walk_cooldown()
 		});
 		self.pos = newpos;
 	}
@@ -191,8 +149,8 @@ impl Creature {
 				self.movement = None;
 			}
 			Control::Direct(DirectChange::Path(mut path)) => {
-				path.retain(|p| self.pos.distance_to(*p) <= 64);
 				path.truncate(32);
+				path.retain(|p| self.pos.distance_to(*p) <= 64);
 				if let Some(idx) = path.iter().position(|p| *p == self.pos) {
 					path.drain(..(idx+1));
 				}
@@ -214,7 +172,7 @@ impl Creature {
 	}
 
 	pub fn update(&mut self, now: Timestamp) {
-		if self.mortal && self.health <= 0 {
+		if self.typ.mortal() && self.health <= 0 {
 			self.is_dead = true;
 			self.activity = Some(Activity {
 				typ: ActivityType::Die(true),
@@ -224,13 +182,15 @@ impl Creature {
 			return;
 		}
 
-		if let Some(autoheal) = &mut self.autoheal {
-			if autoheal.next.is_some_and(|next| now >= next) {
-				self.health = (self.health + autoheal.amount).min(self.max_health).max(self.health).max(0);
-				autoheal.next = None;
+		if self.health >= self.typ.health() {
+			self.last_autoheal = Timestamp::zero();
+		} else if let Some(autoheal) = self.typ.autoheal() {
+			let next_autoheal = self.last_autoheal + autoheal.cooldown;
+			if now == next_autoheal {
+				self.health = (self.health + autoheal.amount).min(self.typ.health()).max(self.health).max(0);
 			}
-			if autoheal.next.is_none() && self.health < self.max_health {
-				autoheal.next = Some(now + autoheal.cooldown);
+			if now >= next_autoheal {
+				self.last_autoheal = now;
 			}
 		}
 	}
@@ -242,7 +202,7 @@ impl Creature {
 			!creature_map.blocking(p, &ct) && !map.cell(p).blocking()
 		};
 		let rind = random::randomize_u32(random::randomize_pos(self.home) + random::randomize_pos(self.pos) + time.0 as u32);
-		match self.mind {
+		match self.typ.mind() {
 			Mind::Player => {
 				if self.plan.is_none() {
 					if let Some(direction) = self.movement {
@@ -303,7 +263,7 @@ impl Creature {
 			Mind::Aggressive => {
 				if let Some(target_id) = self.target {
 					if let Some(target) = creature_map.get_creature(&target_id) {
-						if self.pos.distance_to(target.pos) > self.give_up_distance {
+						if self.pos.distance_to(target.pos) > self.typ.give_up_distance() {
 							self.target = None;
 						}
 					} else  {
@@ -311,8 +271,8 @@ impl Creature {
 					}
 				}
 				if self.target.is_none() {
-					self.target = creature_map.nearby(self.pos, self.aggro_distance)
-						.filter(|other| self.faction.is_enemy(other.faction))
+					self.target = creature_map.nearby(self.pos, self.typ.aggro_distance())
+						.filter(|other| self.faction().is_enemy(other.faction))
 						.min_by_key(|other| self.pos.distance_to(other.pos))
 						.map(|other| other.id);
 				}
@@ -349,15 +309,23 @@ impl Creature {
 			}
 		}
 	}
+
+	pub fn blocking(&self) -> bool {
+		self.typ.blocking()
+	}
+
+	pub fn faction(&self) -> Faction {
+		self.typ.faction()
+	}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlayerSave {
-	pub name: String,
-	pub pos: Pos,
-	pub inventory: InventorySave,
+	name: String,
+	pos: Pos,
+	inventory: InventorySave,
 	#[serde(default="one")]
-	pub health: i32,
+	health: i32,
 }
 fn one() -> i32 {1}
 
@@ -367,7 +335,7 @@ impl PlayerSave {
 			name,
 			pos,
 			inventory: Vec::new(),
-			health: 100,
+			health: CreatureType::Player.health(),
 		}
 	}
 }
@@ -375,19 +343,19 @@ impl PlayerSave {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CreatureView {
 	#[serde(rename = "i")]
-	pub id: CreatureId,
+	id: CreatureId,
 	#[serde(rename = "s")]
-	pub sprite: Sprite,
+	sprite: Sprite,
 	#[serde(rename = "p")]
-	pub pos: Pos,
+	pos: Pos,
 	#[serde(rename="a", skip_serializing_if = "Option::is_none")]
-	pub activity: Option<Activity>,
+	activity: Option<Activity>,
 	#[serde(rename = "h")]
-	pub health: (i32, i32),
+	health: (i32, i32),
 	#[serde(rename = "w", skip_serializing_if = "Vec::is_empty")]
-	pub wounds: Vec<Wound>,
+	wounds: Vec<Wound>,
 	#[serde(rename = "b", skip_serializing_if = "Not::not")]
-	pub blocking: bool,
+	blocking: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -407,7 +375,7 @@ impl Faction {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub enum ActivityType {
+enum ActivityType {
 	#[serde(rename = "M")]
 	Walk(Pos),
 	#[serde(rename = "F")]
@@ -422,22 +390,22 @@ pub enum ActivityType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct Activity {
+struct Activity {
 	#[serde(flatten)]
-	pub typ: ActivityType,
+	typ: ActivityType,
 	#[serde(rename = "s")]
-	pub start: Timestamp,
+	start: Timestamp,
 	#[serde(rename = "e")]
-	pub end: Timestamp,
+	end: Timestamp,
 }
 impl Activity {
-	pub fn is_active(&self, tick: Timestamp) -> bool {
+	fn is_active(&self, tick: Timestamp) -> bool {
 		tick <= self.end
 	}
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
-pub struct Wound {
+struct Wound {
 	#[serde(rename="d")]
 	damage: i32,
 	#[serde(rename="t")]
@@ -450,18 +418,32 @@ pub struct Wound {
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Assoc, Serialize, Deserialize)]
-#[func(fn sprite(&self) -> Sprite)]
+#[func(fn sprite(self) -> Sprite)]
 #[func(fn name(&self) -> &str)]
-#[func(fn faction(&self) -> Faction {Faction::Neutral})]
-#[func(fn health(&self) -> i32 {1})]
-#[func(fn attack(&self) -> i32 {0})]
-#[func(fn mind(&self) -> Mind {Mind::Idle})]
-#[func(fn aggro_distance(&self) -> i32 {-1})]
-#[func(fn give_up_distance(&self) -> i32 {-1})]
-#[func(fn walk_cooldown(&self) -> Duration {Duration(10)})]
-#[func(fn attack_cooldown(&self) -> Duration {Duration(100)})]
-#[func(fn blocking(&self) -> bool {false})]
-pub enum Npc {
+#[func(fn faction(self) -> Faction {Faction::Neutral})]
+#[func(fn health(self) -> i32 {1})]
+#[func(fn attack(self) -> i32 {0})]
+#[func(fn mind(self) -> Mind {Mind::Idle})]
+#[func(fn aggro_distance(self) -> i32 {-1})]
+#[func(fn give_up_distance(self) -> i32 {-1})]
+#[func(fn walk_cooldown(self) -> Duration {Duration(10)})]
+#[func(fn attack_cooldown(self) -> Duration {Duration(100)})]
+#[func(fn blocking(self) -> bool {false})]
+#[func(fn mortal(self) -> bool {true})]
+#[func(fn autoheal(self) -> Option<AutoHeal>)]
+pub enum CreatureType {
+	#[assoc(name = "Player")]
+	#[assoc(sprite = Sprite::PlayerDefault)]
+	#[assoc(mind = Mind::Player)]
+	#[assoc(walk_cooldown = Duration(2))]
+	#[assoc(attack_cooldown = Duration(10))]
+	#[assoc(faction = Faction::Player)]
+	#[assoc(blocking = false)]
+	#[assoc(attack = 5)]
+	#[assoc(health = 100)]
+	#[assoc(mortal = false)]
+	#[assoc(autoheal = AutoHeal {cooldown: Duration(100), amount: 1})]
+	Player,
 	#[assoc(name = "Frog")]
 	#[assoc(sprite = Sprite::Frog)]
 	#[assoc(walk_cooldown = Duration(5))]
@@ -471,10 +453,10 @@ pub enum Npc {
 	#[assoc(mind = Mind::Aggressive)]
 	#[assoc(blocking = true)]
 	#[assoc(walk_cooldown = Duration(5))]
-	#[assoc(attack_cooldown = Duration(20))]
+	#[assoc(attack_cooldown = Duration(15))]
 	#[assoc(faction = Faction::Evil)]
 	#[assoc(health = 12)]
-	#[assoc(attack = 3)]
+	#[assoc(attack = 2)]
 	#[assoc(aggro_distance = 4)]
 	#[assoc(give_up_distance = 10)]
 	Worm
@@ -485,7 +467,6 @@ pub enum Npc {
 struct AutoHeal {
 	cooldown: Duration,
 	amount: i32,
-	next: Option<Timestamp>
 }
 
 #[derive(Debug, Clone)]

@@ -9,7 +9,7 @@ use crate::{
 	worldmessages::SoundType,
 	hashmap,
 	crop::Crop,
-	creature::Npc,
+	creature::CreatureType as Npc,
 };
 
 

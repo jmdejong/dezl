@@ -11,6 +11,7 @@ mod basemap;
 mod config;
 mod controls;
 mod creature;
+mod creaturemap;
 mod creatures;
 mod crop;
 mod errors;
@@ -49,6 +50,7 @@ use self::{
 	persistence::{PersistentStorage, file::FileStorage, LoaderError},
 	config::{Config, WorldAction, WorldConfig, MapDef},
 	basemap::BaseMapImpl,
+	creature::PlayerSave,
 };
 
 
@@ -207,12 +209,11 @@ fn bench_view(iterations: usize) {
 	let mapdef = MapDef::Infinite{seed: 9876};
 	let basemap = BaseMapImpl::from_mapdef(mapdef.clone()).expect(&format!("Can't load base map {:?}", &mapdef));
 	let mut world = World::new("bench".to_string(), basemap, mapdef);
-	let mut player_save = world.default_player("Player".to_string());
 	let player_id = PlayerId::create("Player").unwrap();
 	let now = Instant::now();
 	for i in 0..iterations {
-		player_save.pos = Pos::new(i as i32 * 121 - 22, i as i32 * 8 - 63);
-		world.add_player(&player_id, player_save.clone()).unwrap();
+		let player_save = PlayerSave::new("Player".to_string(), Pos::new(i as i32 * 121 - 22, i as i32 * 8 - 63));
+		world.add_player(&player_id, player_save).unwrap();
 		world.update();
 		world.view();
 		world.remove_player(&player_id).unwrap();

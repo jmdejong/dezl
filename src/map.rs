@@ -7,7 +7,7 @@ use crate::{
 	basemap::{BaseMap, BaseMapImpl},
 	timestamp::{Timestamp, Duration},
 	sprite::Sprite,
-	creature::{Npc},
+	creature::CreatureType as Npc,
 	item::Item,
 	randomtick
 };

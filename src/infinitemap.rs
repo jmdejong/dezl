@@ -10,7 +10,7 @@ use crate::{
 	randomtick,
 	util::math,
 	heightmap::{HeightMap, LazyHeightMap},
-	creature::Npc,
+	creature::CreatureType as Npc,
 };
 
 macro_rules! t {
