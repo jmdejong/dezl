@@ -91,6 +91,10 @@ class Area {
 		return new Vec2(this.w, this.h);
 	}
 
+	surface() {
+		return this.w * this.h;
+	}
+
 	max() {
 		return new Vec2(this.x + this.w, this.y + this.h);
 	}
@@ -125,6 +129,15 @@ class Area {
 	}
 	floor() {
 		return Area.fromCorners(this.origin().floor(), this.max().floor());
+	}
+	intersection(other) {
+		let x = Math.max(this.x, other.x);
+		let y = Math.max(this.y, other.y);
+		let x_ = Math.min(this.x + this.w, other.x + other.w);
+		let y_ = Math.min(this.y + this.h, other.y + other.h);
+		let w = Math.max(x_ - x, 0);
+		let h = Math.max(y_ - y, 0);
+		return new Area(x, y, w, h);
 	}
 }
 

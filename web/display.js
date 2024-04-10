@@ -161,7 +161,7 @@ class DrawBuffer {
 	drawBorders(color, x, y, edges, width) {
 		let px = (x - this.area.x) * this.resolution;
 		let py = (y - this.area.y) * this.resolution;
-		this.ctx.strokeStyle = color;
+		this.ctx.strokeStyle = "#" + color.toString(16);
 		this.ctx.lineWidth = width * this.resolution;
 		let off = width * this.resolution / 2;
 		if (edges.left) {
@@ -206,7 +206,7 @@ class Layer {
 		this.name = name;
 		this.clear = opts.clear|| ClearMode.Tile;
 		this.offset = vec2(...(opts.offset || [0, 0]));
-		this.trueScale = opts.trueScale || false;
+		this.dynamic = opts.dynamic || false;
 	}
 
 	clearMode() {
@@ -228,11 +228,11 @@ class Display {
 			new Layer("base", {offset: groundOffset}),
 			new Layer("borders", {offset: groundOffset, clear: ClearMode.None}),
 			new Layer("main"),
-			new Layer("creatures", {clear: ClearMode.None, trueScale: true}),
+			new Layer("creatures", {clear: ClearMode.None, dynamic: true}),
 			new Layer("wol", {offset: [-1, 0]}),
 			new Layer("wom", {offset: [0, 0]}),
 			new Layer("wor", {offset: [1, 0]}),
-			new Layer("effect", {clear: ClearMode.None, trueScale: true}),
+			new Layer("effect", {clear: ClearMode.None, dynamic: true}),
 			new Layer("hol", {offset: [-1, -1]}),
 			new Layer("hom", {offset: [0, -1]}),
 			new Layer("hor", {offset: [1, -1]}),
@@ -241,7 +241,7 @@ class Display {
 		this.spritemap = spritemap;
 		this.area = new Area(0, 0, 0, 0);
 		this.center = vec2(0, 0);
-		this.borders = new Map();
+		this.borders = new GridU32(this.area)//new Map();
 		this.scale = 4;
 		this.init = false;
 		this.fuzzSprite = fuzzSprite;
@@ -250,7 +250,7 @@ class Display {
 	setViewArea(area){
 		for (let layer of this.layers) {
 			let resolution = this.tileSize;
-			if (layer.trueScale) {
+			if (layer.dynamic) {
 				resolution *= this.scale;
 			}
 			let buffer = new DrawBuffer(area.grow(1), resolution);
@@ -264,13 +264,17 @@ class Display {
 		let minY = area.y - 1;
 		let maxX = area.x + area.w;
 		let maxY = area.y + area.h;
-		this.borders.forEach((border, key, map) => {
-			let [x, y] = key.split(",").map(v => v|0)
-			if (x < minX || y < minY || x > maxX || y > maxY) {
-				map.delete(key);
-			}
-		});
-		this.init = true
+		let borders = new GridU32(area);
+		borders.copyFrom(this.borders);
+		this.borders = borders;
+		// this.borders.clear();
+		// this.borders.forEach((border, key, map) => {
+		// 	let [x, y] = key.split(",").map(v => v|0)
+		// 	if (x < minX || y < minY || x > maxX || y > maxY) {
+		// 		map.delete(key);
+		// 	}
+		// });
+		this.init = true;
 	}
 
 	drawSection(area, cells, mapping){
@@ -287,7 +291,8 @@ class Display {
 			let x = (i % area.w) + area.x;
 			let y = (i / area.w | 0) + area.y;
 			this._drawTile(x, y, mapping[cells[i]]);
-			this.borders.set(hashpos(x, y), borderMap[cells[i]]);
+			this.borders.put(vec2(x, y), borderMap[cells[i]]);
+			// this.borders.set(hashpos(x, y), borderMap[cells[i]]);
 		}
 		area.grow(1).forEach(pos => this._drawBorder(pos.x, pos.y));
 	}
@@ -310,8 +315,8 @@ class Display {
 			this._drawTile(x, y, sprites);
 			let border = this._border(sprites);
 			let p = hashpos(x, y);
-			if (border !== this.borders.get(p)) {
-				this.borders.set(p, border);
+			if (border !== this.borders.getVal(p)) {
+				this.borders.put(p, border);
 				this._drawBorder(x, y);
 				this._drawBorder(x+1, y);
 				this._drawBorder(x-1, y);
@@ -385,7 +390,7 @@ class Display {
 	_drawBorder(x, y) {
 		this.buffers.borders.clearTile(x, y);
 		let border = this._borderAt(x, y);
-		if (border) {
+		if (border >= 0 && border < 0x1_00_00_00) {
 			let edges = {
 				left: this._borderAt(x - 1, y) !== border,
 				right: this._borderAt(x + 1, y) !== border,
@@ -397,7 +402,8 @@ class Display {
 	}
 
 	_borderAt(x, y) {
-		return this.borders.get(hashpos(x, y));
+		return this.borders.getVal(vec2(x, y));
+		// return this.borders.get(hashpos(x, y));
 	}
 
 	setCenter(pos) {
@@ -422,7 +428,7 @@ class Display {
 				return sprite.border;
 			}
 		}
-		return null;
+		return -1;
 	}
 
 	screenCenter() {
