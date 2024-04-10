@@ -11,25 +11,42 @@ class Activity {
 		this.start = start;
 		this.end = end;
 		this.duration = end - start;
+		this.id = start;
+		this.started = false;
 	}
 
-	static parse(a) {
+	doStart(time) {
+		if (this.started) {
+			return;
+		}
+		this.started = true;
+		let delay = time - this.start
+		if (delay <= 0) {
+			return;
+		}
+		this.start = time;
+		this.duration = Math.max(this.duration/2, this.duration - delay);
+		this.end = this.start + this.duration;
+	}
+
+
+	static parse(a, pos) {
 		if (!a) {
-			return new NoActivity();
+			return null;
 		} else if (a.M) {
-			return new WalkActivity(a.s, a.e, vec2(...a.M));
+			return new WalkActivity(a.s, a.e, vec2(...a.M), pos);
 		} else if (a.F) {
 			return new FightActivity(a.s, a.e, vec2(...a.F.t));
 		} else if (a.D) {
 			return new DieActivity(a.s, a.e);
 		} else {
 			console.error("Unknown activity", a);
-			return new NoActivity();
+			return null;
 		}
 	}
 
-	isActive(time) {
-		return time >= this.start && time <= this.end;
+	isFinished(time) {
+		return time >= this.end;
 	}
 	progress(time, max) {
 		return clamp((time - this.start) / Math.min(this.duration, max || Infinity), 0, 1);
@@ -45,23 +62,27 @@ class Activity {
 	}
 }
 class NoActivity extends Activity {
-	isActive(_time) {
-		return false;
+	constructor() {
+		super(-1, 0);
+	}
+	isFinished(_time) {
+		return true;
 	}
 	progress(_time) {
 		return 1;
 	}
 }
 class WalkActivity extends Activity {
-	constructor(start, end, origin) {
+	constructor(start, end, origin, to) {
 		super(start, end);
 		this.origin = origin;
+		this.to = to
 	}
-	currentPosition(time, pos) {
-		return this.origin.lerp(pos, this.progress(time));
+	currentPosition(time) {
+		return this.origin.lerp(this.to, this.progress(time));
 	}
-	corePosition(time, pos) {
-		return this.currentPosition(time, pos);
+	corePosition(time) {
+		return this.currentPosition(time);
 	}
 }
 class FightActivity extends Activity {
@@ -81,34 +102,54 @@ class DieActivity extends Activity {
 }
 
 class Creature {
-	constructor(id, pos, sprite, activity, health, wounds, blocking){
+	constructor(id, pos, sprite, activity, health, wounds, blocking, previous){
 		this.id = id;
 		this.pos = pos;
-		this.sprite = sprite
-		this.activity = activity;
+		this.sprite = sprite;
+		this.activities = []
+		if (previous) {
+			this.activities = previous.activities.concat();
+		}
+		if (activity && !this.activities.some(a => a.id === activity.id)) {
+			this.activities.push(activity);
+		}
 		this.health = health;
 		this.wounds = wounds;
 		this.blocking = blocking;
 	}
 
-	static parse(e) {
+	static parse(e, previous) {
+		let pos = vec2(...e.p);
 		let wounds = (e.w || []).map(wound => ({damage: wound.d, time: wound.t, rind: wound.r}));
-		return new Creature(e.i, vec2(...e.p), e.s, Activity.parse(e.a), e.h, wounds, e.b);
+		return new Creature(e.i, pos, e.s, Activity.parse(e.a, pos), e.h, wounds, e.b, previous);
 	}
+
+	activity(time) {
+		while (this.activities.length > 1 && this.activities[0].isFinished(time)) {
+			this.activities.shift();
+		}
+		if (this.activities.length) {
+			this.activities[0].doStart(time);
+			return this.activities[0];
+		} else {
+			return new NoActivity();
+		}
+	}
+
 
 	snapshot(time) {
 		let wounds = this.wounds.map(wound => ({damage: wound.damage, age: time - wound.time, rind: wound.rind}));
 		return {
-			pos: this.activity.currentPosition(time, this.pos),
+			pos: this.activity(time).currentPosition(time, this.pos),
 			sprite: this.sprite,
 			health: this.health,
-			opacity: this.activity.opacity(time),
+			opacity: this.activity(time).opacity(time),
 			wounds
 		};
 	}
 
 	corePosition(time) {
-		return this.activity.corePosition(time, this.pos);
+		return this.activity(time).corePosition(time, this.pos);
 	}
 
 	isPlayer() {
@@ -121,31 +162,58 @@ class Model {
 	constructor() {
 		this.entities = [];
 		this.tick = 0;
-		this.me = {p: [0, 0]};
+		this.shownTick = 0;
+		this.me = null;
 	}
 
 	setTime(tick) {
 		this.tick = tick;
+		if (Number.isNaN(this.shownTick) || this.shownTick < tick - 10 || this.shownTick > tick + 10) {
+			console.log("time jump", tick, this.shownTick);
+			this.shownTick = tick;
+		}
 	}
 
 	stepTime(difference) {
 		this.tick += difference;
+		this.shownTick += difference;
+		if (this.shownTick > this.tick) {
+			this.shownTick = Math.max(this.tick, this.shownTick - difference / 4);
+		} else if (this.shownTick <= this.tick) {
+			this.shownTick = Math.min(this.tick, this.shownTick + difference / 32);
+		}
 	}
 
 	setEntities(entities) {
-		this.entities = entities.map(Creature.parse);
+		let oldEntities = {};
+		for (let entity of this.entities) {
+			oldEntities[entity.id] = entity;
+		}
+		this.entities = entities.map(e => Creature.parse(e, oldEntities[e.i]));
 		this.entities.sort((a, b) => a.pos.y - b.pos.y || a.isPlayer() - b.isPlayer() || (a.id === this.me.id) - (b.id === this.me.id));
 	}
 
-	setMe(me) {
-		this.me = Creature.parse(me);
+	setMe(rawMe) {
+		let me = Creature.parse(rawMe, this.me);
+		this.me = me;
 	}
 
 	currentEntities() {
-		return this.entities.map(entity => entity.snapshot(this.tick));
+		return this.entities.map(entity => {
+			let s = entity.snapshot(this.shownTick);
+			if (entity.id === this.me.id) {
+				s.pos = this.currentCenter();
+			}
+			return s;
+		});
 	}
 
 	currentCenter() {
-		return this.me.corePosition(this.tick);
+		if (this.me) {
+			let cp = this.me.corePosition(this.shownTick);
+			return cp;
+		} else {
+			return vec2(0, 0);
+		}
 	}
 }

@@ -15,10 +15,11 @@ class Client {
 		this.fps = 10;
 		this.keepRunning = true;
 		this.send = msg => this.sendRaw(JSON.stringify(msg));
-		let delay = settings.delay|0;
-		if (delay) {
-			this.send = msg => setTimeout((() => this.sendRaw(JSON.stringify(msg))), delay);
-		}
+		this.delay = settings.delay|0;
+		this.rdelay = settings.rdelay|0;
+		// if (this.delay || this.rdelay) {
+				// this.send = msg => setTimeout((() => this.sendRaw(JSON.stringify(msg))), this.delay);
+		// }
 		this.model = new Model();
 		this.readyToDraw = false;
 		this.actionBar = new ActionBar();
@@ -121,8 +122,12 @@ class Client {
 			this.print("Connection lost");
 			this.keepRunning = false;
 		});
-		if (this.delay) {
-			this.websocket.addEventListener("message", msg => setTimeout(() => this.handleMessage(msg), this.delay));
+		if (this.delay || this.rdelay) {
+			let messageQueue = []
+			this.websocket.addEventListener("message", msg => {
+				messageQueue.push(msg);
+				setTimeout(() => this.handleMessage(messageQueue.shift()), this.delay + Math.random() * this.rdelay)
+			});
 		} else {
 			this.websocket.addEventListener("message", msg => this.handleMessage(msg));
 		}

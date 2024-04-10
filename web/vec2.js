@@ -51,6 +51,10 @@ class Vec2 {
 		return new Vec2(this.x*(1-d) + to.x*d, this.y*(1-d) + to.y*d);
 	}
 
+	distanceTo(other) {
+		return this.sub(other).length();
+	}
+
 	clone() {
 		return new Vec2(this.x, this.y);
 	}
