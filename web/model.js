@@ -51,11 +51,11 @@ class Activity {
 	progress(time, max) {
 		return clamp((time - this.start) / Math.min(this.duration, max || Infinity), 0, 1);
 	}
-	currentPosition(time, pos) {
-		return pos;
-	}
 	corePosition(time, pos) {
 		return pos;
+	}
+	currentPosition(time, pos) {
+		return this.corePosition(time, pos);
 	}
 	opacity(time) {
 		return 1;
@@ -78,11 +78,8 @@ class WalkActivity extends Activity {
 		this.origin = origin;
 		this.to = to
 	}
-	currentPosition(time) {
-		return this.origin.lerp(this.to, this.progress(time));
-	}
 	corePosition(time) {
-		return this.currentPosition(time);
+		return this.origin.lerp(this.to, this.progress(time));
 	}
 }
 class FightActivity extends Activity {
@@ -201,9 +198,6 @@ class Model {
 	currentEntities() {
 		return this.entities.map(entity => {
 			let s = entity.snapshot(this.shownTick);
-			if (entity.id === this.me.id) {
-				s.pos = this.currentCenter();
-			}
 			return s;
 		});
 	}
