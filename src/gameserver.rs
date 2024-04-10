@@ -15,8 +15,7 @@ use crate::{
 		ConnectionId,
 		ServerError
 	},
-	PlayerId,
-	WelcomeMsg,
+	player::{PlayerId, PlayerConfigMsg},
 	worldmessages::WorldMessage,
 };
 
@@ -25,9 +24,14 @@ use crate::{
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all="lowercase")]
 enum ClientMessage {
-	Introduction(String),
+	Introduction{
+		name: String,
+		#[serde(default)]
+		config: PlayerConfigMsg,
+	},
 	Chat(String),
-	Input(Value)
+	Input(Value),
+	Configure(PlayerConfigMsg),
 }
 
 
@@ -81,6 +85,12 @@ impl Serialize for ServerMessage<'_> {
 		}
 	}
 }
+
+#[derive(Debug, Serialize)]
+pub struct WelcomeMsg {
+	pub tick_millis: u64
+}
+
 
 macro_rules! merr {
 	(name, $text: expr) => {merr!(ErrTyp::InvalidName, $text)};
@@ -195,7 +205,7 @@ impl GameServer {
 	fn handle_message(&mut self, clientid: ClientId, msg: ClientMessage) -> Result<Option<Action>, MessageError> {
 		let id = clientid;
 		match msg {
-			ClientMessage::Introduction(name) => {
+			ClientMessage::Introduction{name, config} => {
 				if name.as_bytes().len() > 14 {
 					return Err(merr!(name, "A name can not be longer than 14 bytes"));
 				}
@@ -220,17 +230,21 @@ impl GameServer {
 				if self.send(&player, ServerMessage::Connected(format!("successfully connected as {}", player))).is_err() {
 					return Err(merr!(ErrTyp::ServerError, "unable to send connected message"))
 				}
-				Ok(Some(Action::Join(player, name)))
+				Ok(Some(Action::Join{player, name, config}))
 			}
 			ClientMessage::Chat(text) => {
-				let player = self.players.get(&id).ok_or(merr!(action, "Set a valid name before you send any other messages"))?;
+				let player = self.players.get(&id).ok_or(merr!(action, "Send a valid introduction message before you send any other messages"))?;
 				self.broadcast_message(&format!("{}: {}", player, text));
 				Ok(None)
 			}
 			ClientMessage::Input(inp) => {
-				let player = self.players.get(&id).ok_or(merr!(action, "Set a name before you send any other messages"))?;
+				let player = self.players.get(&id).ok_or(merr!(action, "Send a valid introduction message before you send any other messages"))?;
 				let control = Control::deserialize(&inp).map_err(|err| merr!(action, &format!("unknown action {} {}", inp, err)))?;
 				Ok(Some(Action::Input(*player, control)))
+			}
+			ClientMessage::Configure(config) => {
+				let player = self.players.get(&id).ok_or(merr!(action, "Send a valid introduction message before you send any other messages"))?;
+				Ok(Some(Action::Configure(*player, config)))
 			}
 		}
 	}

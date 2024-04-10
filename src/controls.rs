@@ -2,7 +2,7 @@
 
 use serde::{Serialize, Deserialize};
 use crate::{
-	PlayerId,
+	player::{PlayerId, PlayerConfigMsg},
 	pos::{Direction, Pos},
 };
 
@@ -34,7 +34,8 @@ pub enum Control {
 
 #[derive(Debug, Clone)]
 pub enum Action {
-	Join(PlayerId, String),
+	Join{player: PlayerId, name: String, config: PlayerConfigMsg},
+	Configure(PlayerId, PlayerConfigMsg),
 	Leave(PlayerId),
 	Input(PlayerId, Control)
 }

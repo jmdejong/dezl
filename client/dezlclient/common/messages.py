@@ -67,10 +67,7 @@ class IntroductionMessage(ClientToServerMessage):
         self.name = name
     
     def body(self):
-        return self.name
-
-
-
+        return {"name": self.name}
         
         
 class InputMessage(ClientToServerMessage):

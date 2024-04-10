@@ -3,7 +3,7 @@ use std::collections::{HashMap};
 use serde::{Serialize, Deserialize};
 
 use crate::{
-	PlayerId,
+	player::{PlayerId, PlayerConfigMsg},
 	config::MapDef,
 	controls::{Plan, Control},
 	pos::{Pos, Direction},
@@ -48,8 +48,11 @@ impl World {
 		PlayerSave::new(name, self.ground.player_spawn())
 	}
 	
-	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerAlreadyExists> {
-		self.creatures.add_player(playerid, saved)
+	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave, config: PlayerConfigMsg) -> Result<(), PlayerAlreadyExists> {
+		self.creatures.add_player(playerid, saved, config)
+	}
+	pub fn configure_player(&mut self, playerid: &PlayerId, config: PlayerConfigMsg) -> Result<(), PlayerNotFound> {
+		self.creatures.configure_player(playerid, config)
 	}
 	
 	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerNotFound> {
@@ -214,10 +217,7 @@ impl World {
 	}
 
 	fn update_loaded_areas(&mut self) {
-		let player_positions: HashMap<PlayerId, Pos> = self.creatures.iter_players()
-			.map(|(id, body)| (*id, body.pos))
-			.collect();
-		self.loaded_areas.update(&player_positions);
+		self.loaded_areas.update(&self.creatures);
 		for fresh_area in self.loaded_areas.all_fresh() {
 			self.ground.load_area(fresh_area);
 		}

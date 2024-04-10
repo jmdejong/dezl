@@ -2,14 +2,12 @@
 use std::collections::HashMap;
 
 use crate::{
-	player::PlayerId,
+	player::{PlayerId},
 	pos::{Pos, Area},
+	creatures::Creatures
 };
 
-const EDGE_OFFSET: i32 = 32;
 const DESPAWN_OFFSET: i32 = 32;
-const VIEW_AREA_SIZE: Pos = Pos::new(128, 128);
-
 
 #[derive(Debug)]
 pub struct LoadedAreas {
@@ -25,18 +23,20 @@ impl LoadedAreas {
 		}
 	}
 
-	pub fn update(&mut self, player_positions: &HashMap<PlayerId, Pos>) {
+	pub fn update(&mut self, creatures: &Creatures) {
 		self.fresh = HashMap::new();
-		for (player_id, pos) in player_positions.iter() {
+		for (player_id, body) in creatures.iter_players() {
+			let config = creatures.player_config(player_id).unwrap();
 			let old_area = self.loaded.get(player_id);
-			let in_view_range = old_area.is_some_and(|area| area.grow(-EDGE_OFFSET).contains(*pos));
+			let screen_area = Area::centered(body.pos, config.view_size);
+			let in_view_range = old_area.is_some_and(|area| area.contains_area(screen_area));
 			if !in_view_range {
-				let (total_area, new_area) = Self::new_area(*pos, old_area);
+				let (total_area, new_area) = Self::new_area(screen_area, config.view_offset, old_area);
 				self.loaded.insert(*player_id, total_area);
 				self.fresh.insert(*player_id, new_area);
 			}
 		}
-		self.loaded.retain(|player_id, _| player_positions.contains_key(player_id));
+		self.loaded.retain(|player_id, _| creatures.get_player(player_id).is_some());
 	}
 
 	pub fn all_loaded(&self) -> Vec<Area> {
@@ -59,27 +59,27 @@ impl LoadedAreas {
 		self.loaded.values().any(|area| area.grow(DESPAWN_OFFSET).contains(pos))
 	}
 
-	fn new_area(body_pos: Pos, view_area: Option<&Area>) -> (Area, Area) {
-		let core_area = Area::centered(body_pos, VIEW_AREA_SIZE);
+	fn new_area(screen_area: Area, offset: i32, view_area: Option<&Area>) -> (Area, Area) {
+		let core_area = screen_area.grow(offset);
 		let Some(old_area) = view_area else {
 			return (core_area, core_area);
 		};
-		if !core_area.overlaps(old_area) {
+		if core_area.size() != old_area.size() || !core_area.overlaps(old_area) {
 			return (core_area, core_area);
 		}
-		if body_pos.x <= old_area.min().x + EDGE_OFFSET {
-			let new_min = Pos::new(body_pos.x - VIEW_AREA_SIZE.x / 2, old_area.min().y);
-			(Area::new(new_min, VIEW_AREA_SIZE), Area::between(new_min, Pos::new(old_area.min().x, old_area.max().y)))
-		} else if body_pos.y <= old_area.min().y + EDGE_OFFSET {
-			let new_min = Pos::new(old_area.min().x, body_pos.y - VIEW_AREA_SIZE.y / 2);
-			(Area::new(new_min, VIEW_AREA_SIZE), Area::between(new_min, Pos::new(old_area.max().x, old_area.min().y)))
-		} else if body_pos.x >= old_area.max().x - EDGE_OFFSET {
-			let new_min = Pos::new(body_pos.x - VIEW_AREA_SIZE.x / 2, old_area.min().y);
-			let new_area = Area::new(new_min, VIEW_AREA_SIZE);
+		if screen_area.min().x < old_area.min().x {
+			let new_min = Pos::new(core_area.min().x, old_area.min().y);
+			(Area::new(new_min, core_area.size()), Area::between(new_min, Pos::new(old_area.min().x, old_area.max().y)))
+		} else if screen_area.min().y < old_area.min().y {
+			let new_min = Pos::new(old_area.min().x, core_area.min().y);
+			(Area::new(new_min, core_area.size()), Area::between(new_min, Pos::new(old_area.max().x, old_area.min().y)))
+		} else if screen_area.max().x > old_area.max().x {
+			let new_min = Pos::new(core_area.min().x, old_area.min().y);
+			let new_area = Area::new(new_min, core_area.size());
 			(new_area, Area::between(Pos::new(old_area.max().x, old_area.min().y), new_area.max()))
-		} else if body_pos.y >= old_area.max().y - EDGE_OFFSET {
-			let new_min = Pos::new(old_area.min().x, body_pos.y - VIEW_AREA_SIZE.y / 2);
-			let new_area = Area::new(new_min, VIEW_AREA_SIZE);
+		} else if screen_area.max().y > old_area.max().y{
+			let new_min = Pos::new(old_area.min().x, core_area.min().y);
+			let new_area = Area::new(new_min, core_area.size());
 			(new_area, Area::between(Pos::new(old_area.min().x, old_area.max().y), new_area.max()))
 		} else {
 			// this function shouldn't get called when this is the case, but let's do something somewhat sensible anyways

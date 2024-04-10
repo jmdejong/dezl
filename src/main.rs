@@ -4,7 +4,6 @@ use std::time::{Instant, Duration};
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use clap::Parser;
 use time::OffsetDateTime;
-use serde::Serialize;
 
 mod action;
 mod basemap;
@@ -42,7 +41,7 @@ use self::{
 	player::PlayerId,
 	errors::Result,
 	
-	gameserver::{GameServer, ErrTyp, ServerMessage},
+	gameserver::{GameServer, ErrTyp, ServerMessage, WelcomeMsg},
 	server::ServerEnum,
 	controls::Action,
 	world::World,
@@ -133,7 +132,12 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 						eprintln!("error controlling player {:?}: {:?}", player, err);
 					}
 				}
-				Action::Join(player, name) => {
+				Action::Configure(player, config) => {
+					if let Err(err) = world.configure_player(&player, config){
+						eprintln!("error configuring player {:?}: {:?}", player, err);
+					}
+				}
+				Action::Join{player, name, config: player_config} => {
 					let playersave = match persistence.load_player(&player) {
 						Ok(save) => save,
 						Err(LoaderError::MissingResource(_)) => world.default_player(name),
@@ -143,7 +147,7 @@ fn start_world(mut world: World, persistence: FileStorage, config: WorldConfig) 
 							continue
 						}
 					};
-					if let Err(err) = world.add_player(&player, playersave) {
+					if let Err(err) = world.add_player(&player, playersave, player_config) {
 						eprintln!("Error: can not add player {:?}: {:?}", player, err);
 						gameserver.send_or_log(&player, ServerMessage::Error(ErrTyp::WorldError, "invalid room or savefile"));
 					}
@@ -213,16 +217,11 @@ fn bench_view(iterations: usize) {
 	let now = Instant::now();
 	for i in 0..iterations {
 		let player_save = PlayerSave::new("Player".to_string(), Pos::new(i as i32 * 121 - 22, i as i32 * 8 - 63));
-		world.add_player(&player_id, player_save).unwrap();
+		world.add_player(&player_id, player_save, Default::default()).unwrap();
 		world.update();
 		world.view();
 		world.remove_player(&player_id).unwrap();
 		world.update();
 	}
 	eprintln!("millis: {}", now.elapsed().as_millis());
-}
-
-#[derive(Debug, Serialize)]
-pub struct WelcomeMsg {
-	tick_millis: u64
 }

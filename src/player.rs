@@ -1,6 +1,9 @@
 
 use std::fmt;
 use serde::{Serialize, Deserialize, Serializer, Deserializer, de};
+use crate::{
+	pos::Pos,
+};
 
 #[derive(Debug, Default, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct PlayerId{
@@ -46,3 +49,34 @@ impl<'de> Deserialize<'de> for PlayerId {
 	}
 }
 
+
+#[derive(Debug, Default, PartialEq, Eq, Clone, Deserialize, Serialize)]
+#[serde(rename_all="lowercase")]
+pub struct PlayerConfigMsg {
+	pub view_size: Option<Pos>,
+	pub view_offset: Option<i32>,
+}
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct PlayerConfig {
+	pub view_size: Pos,
+	pub view_offset: i32,
+}
+impl Default for PlayerConfig {
+	fn default() -> Self {
+		Self {
+			view_size: Pos::new(64, 64),
+			view_offset: 32,
+		}
+	}
+}
+
+impl PlayerConfig {
+	pub fn update(&mut self, message: PlayerConfigMsg) {
+		if let Some(view_offset) = message.view_offset {
+			self.view_offset = view_offset.clamp(8, 32);
+		}
+		if let Some(view_size) = message.view_size {
+			self.view_size = Pos::new(view_size.x.clamp(8, 64), view_size.y.clamp(8, 64));
+		}
+	}
+}

@@ -30,7 +30,12 @@ class Client {
 		this.websocket = new WebSocket(this.host);
 		this.websocket.addEventListener("open", e => {
 			document.getElementById("game").hidden = false;
-			e.target.send(JSON.stringify({introduction: this.username}));
+			e.target.send(JSON.stringify({introduction: {
+				name: this.username,
+				config: {
+					view_size: this.display.screenToWorld(new Area(0, 0, this.display.canvas.width, this.display.canvas.height)).size().ceil().arr()
+				}
+			}}));
 		});
 		let keymap = {
 			KeyW: () => this.startMoving(NORTH),
@@ -251,6 +256,11 @@ class Client {
 		this.zooms = this.zooms || 0
 		this.zooms += 1
 		this.display.resize(window.innerWidth, window.innerHeight);
+		this.send({
+			configure: {
+				view_size: this.display.screenToWorld(new Area(0, 0, this.display.canvas.width, this.display.canvas.height)).size().ceil().arr()
+			}
+		});
 	}
 
 	draw() {

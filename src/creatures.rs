@@ -4,7 +4,7 @@ use std::cell::{RefCell, Ref, RefMut};
 use serde::{Serialize, Serializer};
 
 use crate::{
-	PlayerId,
+	player::{PlayerId, PlayerConfig, PlayerConfigMsg},
 	controls::{Control},
 	pos::Pos,
 	creature::{Creature, PlayerSave, CreatureType as Npc},
@@ -56,16 +56,26 @@ impl Creatures {
 		}
 	}
 
-	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave) -> Result<(), PlayerAlreadyExists> {
+	pub fn add_player(&mut self, playerid: &PlayerId, saved: PlayerSave, config_msg: PlayerConfigMsg) -> Result<(), PlayerAlreadyExists> {
 		if self.players.contains_key(playerid){
 			return Err(PlayerAlreadyExists(*playerid));
 		}
 		let body = Creature::load_player(CreatureId::Player(*playerid), saved);
+		let mut config: PlayerConfig = Default::default();
+		config.update(config_msg);
 		self.players.insert(
 			*playerid,
-			Player::new(body)
+			Player::new(body, config)
 		);
 		Ok(())
+	}
+
+	pub fn configure_player(&mut self, playerid: &PlayerId, config_msg: PlayerConfigMsg) -> Result<(), PlayerNotFound> {
+		self.players.get_mut(playerid).ok_or(PlayerNotFound(*playerid))?.config.update(config_msg);
+		Ok(())
+	}
+	pub fn player_config(&self, playerid: &PlayerId) -> Option<&PlayerConfig> {
+		Some(&self.players.get(playerid)?.config)
 	}
 
 	pub fn remove_player(&mut self, playerid: &PlayerId) -> Result<(), PlayerNotFound> {
@@ -158,22 +168,24 @@ impl Creatures {
 }
 
 #[derive(Debug, Clone)]
-pub struct Player {
-	pub plan: Option<Control>,
-	pub body: RefCell<Creature>
-}
-
-#[derive(Debug, Clone)]
 pub struct SpawnedCreature {
 	pub body: RefCell<Creature>,
 	pub last_load: Timestamp,
 }
 
+#[derive(Debug, Clone)]
+pub struct Player {
+	pub plan: Option<Control>,
+	pub body: RefCell<Creature>,
+	config: PlayerConfig,
+}
+
 impl Player {
-	pub fn new(body: Creature) -> Self {
+	pub fn new(body: Creature, config: PlayerConfig) -> Self {
 		Self {
 			plan: None,
 			body: RefCell::new(body),
+			config,
 		}
 	}
 }
