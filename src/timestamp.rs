@@ -41,7 +41,7 @@ impl Sub<Self> for Timestamp {
 	}
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Duration(pub i64);
 
 impl Sub<Self> for Duration {

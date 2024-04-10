@@ -32,7 +32,7 @@ class Vec2 {
 	}
 
 	floor() {
-		return new Vec2(this.x|0, this.y|0);
+		return new Vec2(Math.floor(this.x), Math.floor(this.y));
 	}
 
 	round() {

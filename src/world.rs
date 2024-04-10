@@ -264,7 +264,7 @@ impl World {
 				wm.change = changes.clone();
 			}
 			wm.dynamics = Some(dynamics.clone());
-			wm.me = Some(body.view());
+			wm.me = Some(body.view_ext());
 			wm.inventory = Some(body.inventory.view());
 			wm.sounds = body.heard_sounds.clone();
 

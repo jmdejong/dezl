@@ -87,6 +87,12 @@ class Client {
 			KeyD: () => this.stopMoving(EAST),
 			ArrowRight: () => this.stopMoving(EAST),
 		}
+		this.display.canvas.addEventListener("click", e => {
+			if (e.shiftKey) {
+				let to = this.display.screenToWorld(vec2(e.offsetX, e.offsetY)).floor();
+				this.sendInput({path: [[to.x, to.y]]});
+			}
+		});
 		document.addEventListener("keyup", e => {
 			if (document.activeElement.classList.contains("captureinput")){
 				this.stop();

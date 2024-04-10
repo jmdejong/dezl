@@ -105,18 +105,6 @@ impl Creature {
 		self.activity.as_ref().is_some_and(|activity| matches!(activity.typ, ActivityType::Die(_)) && activity.is_active(tick))
 	}
 
-	pub fn view(&self) -> CreatureView {
-		CreatureView {
-			id: self.id,
-			pos: self.pos,
-			sprite: self.typ.sprite(),
-			blocking: self.blocking(),
-			activity: self.activity.clone(),
-			health: (self.health.max(0), self.typ.health()),
-			wounds: self.wounds.iter().rev().cloned().collect(),
-		}
-	}
-
 	pub fn move_to(&mut self, newpos: Pos, time: Timestamp) {
 		self.activity = Some(Activity {
 			typ: ActivityType::Walk(self.pos),
@@ -144,17 +132,16 @@ impl Creature {
 			Control::Direct(DirectChange::Movement(Some(direction))) => {
 				self.plan = Some(Plan::Move(direction));
 				self.movement = Some(direction);
+				self.path = Vec::new()
 			},
 			Control::Direct(DirectChange::Movement(None)) => {
 				self.movement = None;
 			}
 			Control::Direct(DirectChange::Path(mut path)) => {
-				path.truncate(32);
-				path.retain(|p| self.pos.distance_to(*p) <= 64);
-				if let Some(idx) = path.iter().position(|p| *p == self.pos) {
-					path.drain(..(idx+1));
-				}
+				path.truncate(16);
+				path.retain(|p| self.pos.distance_to(*p) <= 32);
 				self.path = path;
+				self.movement = None;
 			}
 		}
 	}
@@ -210,21 +197,19 @@ impl Creature {
 						self.path = Vec::new();
 						return;
 					}
-					while let Some(path_next) = self.path.first() {
-						if *path_next == self.pos {
-							self.path.remove(0);
-							continue;
-						}
+					if let Some(idx) = self.path.iter().position(|p| *p == self.pos) {
+						self.path.drain(..(idx+1));
+					}
+					if let Some(path_next) = self.path.first() {
 						let directions: Vec<Direction> = self.pos.directions_to(*path_next)
 							.into_iter()
 							.filter(can_walk)
 							.collect();
-						if directions.is_empty() {
-							break;
+						if !directions.is_empty() {
+							let direction = *random::pick(random::randomize_u32(rind + 2849), &directions);
+							self.plan = Some(Plan::Move(direction));
+							return;
 						}
-						let direction = *random::pick(random::randomize_u32(rind + 2849), &directions);
-						self.plan = Some(Plan::Move(direction));
-						return
 					}
 
 					if self.target.is_none() {
@@ -317,6 +302,26 @@ impl Creature {
 	pub fn faction(&self) -> Faction {
 		self.typ.faction()
 	}
+
+	pub fn view(&self) -> CreatureView {
+		CreatureView {
+			id: self.id,
+			pos: self.pos,
+			sprite: self.typ.sprite(),
+			blocking: self.blocking(),
+			activity: self.activity.clone(),
+			health: (self.health.max(0), self.typ.health()),
+			wounds: self.wounds.iter().rev().cloned().collect(),
+			walk_speed: None,
+		}
+	}
+
+	pub fn view_ext(&self) -> CreatureView {
+		CreatureView {
+			walk_speed: Some((1, self.typ.walk_cooldown())),
+			..self.view()
+		}
+	}
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -356,6 +361,8 @@ pub struct CreatureView {
 	wounds: Vec<Wound>,
 	#[serde(rename = "b", skip_serializing_if = "Not::not")]
 	blocking: bool,
+	#[serde(rename = "v", skip_serializing_if = "Option::is_none")]
+	walk_speed: Option<(i32, Duration)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
