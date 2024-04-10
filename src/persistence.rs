@@ -1,6 +1,6 @@
 
 use crate::{
-	PlayerId,
+	player::PlayerId,
 	world::WorldSave,
 	creature::PlayerSave,
 	errors::AnyError,

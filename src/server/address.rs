@@ -4,9 +4,8 @@ use std::net::{SocketAddr};
 use std::str::FromStr;
 
 use crate::{
-	Result,
+	errors::{Result, AError},
 	err,
-	errors::AError
 };
 use super::{
 	VarInetServer,

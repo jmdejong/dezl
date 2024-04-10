@@ -1,5 +1,5 @@
 
-use crate::Pos;
+use crate::pos::Pos;
 
 const MULTIPLIER: u64 = 0x5DEECE66D;
 const ADDEND: u64 = 0xB;

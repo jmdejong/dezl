@@ -232,7 +232,7 @@ impl InfiniteMap {
 		if height.abs() < reed_density {
 			t!(
 				if height > 0.0 { Ground::Dirt } else { Ground::Water },
-				if (rtime/5).rem_euclid(4) as u32 == 0 {
+				if (rtime/5).rem_euclid(4) == 0 {
 					Structure::Air
 				} else {
 					Structure::Reed

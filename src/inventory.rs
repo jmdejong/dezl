@@ -97,7 +97,7 @@ mod tests {
 	#[test]
 	fn has_item() {
 		let inv = Inventory::load(vec![(Item::Stone, 1)]);
-		assert_eq!(inv.get_item(0), Item::Stone);
+		assert_eq!(inv.get_item(0), Some(Item::Stone));
 	}
 	#[test]
 	fn moves_item() {
