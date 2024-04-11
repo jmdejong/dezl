@@ -252,11 +252,12 @@ class Display {
 		this.spritemap = spritemap;
 		this.area = new Area(0, 0, 0, 0);
 		this.center = vec2(0, 0);
-		this.borders = new GridU32(this.area)//new Map();
+		this.borders = new GridU32(this.area)
 		this.scale = 4;
 		this.init = false;
 		this.fuzzSprite = fuzzSprite;
 		this.entities = [];
+		this.mergedLayers = null;
 	}
 
 	setViewArea(area){
@@ -264,8 +265,7 @@ class Display {
 			if (layer.dynamic) {
 				continue;
 			}
-			let resolution = this.tileSize;
-			let buffer = DrawBuffer.create(area.grow(1), resolution);
+			let buffer = DrawBuffer.create(area.grow(1), this.tileSize);
 			if (this.buffers[layer.name]) {
 				buffer.drawBuffer(this.buffers[layer.name]);
 			}
@@ -279,6 +279,7 @@ class Display {
 		let borders = new GridU32(area);
 		borders.copyFrom(this.borders);
 		this.borders = borders;
+		this.mergedLayers = null;
 		this.init = true;
 	}
 
@@ -299,6 +300,7 @@ class Display {
 			this.borders.put(vec2(x, y), borderMap[cells[i]]);
 		}
 		area.grow(1).forEach(pos => this._drawBorder(pos.x, pos.y));
+		this.mergedLayers = null;
 	}
 
 	changeTiles(tiles) {
@@ -328,6 +330,7 @@ class Display {
 				this._drawBorder(x, y-1);
 			}
 		}
+		this.mergedLayers = null;
 	}
 
 	drawCreatures(buffer, entities) {
@@ -459,22 +462,46 @@ class Display {
 		return spos.sub(this.screenCenter()).div(this.tileSize * this.scale).add(this.center);
 	}
 
+	mergeLayers() {
+		this.mergedLayers = [];
+		let buffer = null;
+		for (let layer of this.layers) {
+			if (!layer.dynamic) {
+				if (!buffer) {
+					buffer = DrawBuffer.create(this.area, this.tileSize);
+				}
+				buffer.drawBuffer(this.buffers[layer.name], layer.offset)
+			} else {
+				if (buffer) {
+					this.mergedLayers.push({buffer: buffer});
+				}
+				this.mergedLayers.push({dynamic: layer.name});
+				buffer = null;
+			}
+		}
+		if (buffer) {
+			this.mergedLayers.push({buffer: buffer});
+		}
+	}
+
 	redraw(){
 		if (!this.init) {
 			return;
 		}
+		if (!this.mergedLayers) {
+			this.mergeLayers()
+		}
 		let tileSize = this.tileSize * this.scale;
 		let mainBuffer = DrawBuffer.centered(this.canvas, this.center, tileSize);
-		for (let layer of this.layers) {
+		for (let layer of this.mergedLayers) {
 			if (layer.dynamic) {
-				if (layer.name === "creatures") {
+				if (layer.dynamic === "creatures") {
 					this.drawCreatures(mainBuffer, this.entities);
-				} else if (layer.name === "effect") {
+				} else if (layer.dynamic === "effect") {
 					this.drawEffects(mainBuffer, this.entities);
 				}
 			} else {
-				let buffer = this.buffers[layer.name];
-				mainBuffer.drawBuffer(buffer, layer.offset);
+				mainBuffer.drawBuffer(layer.buffer, vec2(0, 0));
 			}
 		}
 	}
