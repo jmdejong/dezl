@@ -79,6 +79,9 @@ function loadSprites(){
 			hardwoodtable: {x: 6, y: 11},
 
 			sawtable: {x: 7, y: 11},
+
+			unknown: {x: 0, y: 15},
+			unknowncreature: {x: 1, y: 15, layer: "creatures"}
 		},
 		8,
 		fuzzTemplate

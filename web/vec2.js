@@ -86,6 +86,9 @@ class Area {
 	static fromCorners(pos, max) {
 		return new Area(pos.x, pos.y, max.x - pos.x, max.y - pos.y);
 	}
+	static centered(center, size) {
+		return new Area(center.x - size.x / 2, center.y - size.y / 2, size.x, size.y);
+	}
 
 	origin() {
 		return new Vec2(this.x, this.y);

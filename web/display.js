@@ -88,16 +88,25 @@ function hashpos(x, y) {
 
 class DrawBuffer {
 
-	constructor(area, resolution) {
-		this.canvas = document.createElement("canvas");
-		this.canvas.width = area.w * resolution;
-		this.canvas.height = area.h * resolution;
+	constructor(canvas, area, resolution) {
+		this.canvas = canvas;
 		this.resolution = resolution;
 		this.area = area;
 		this.ctx = this.canvas.getContext("2d");
 		this.ctx.imageSmoothingEnabled = false;
 	}
 
+	static create(area, resolution) {
+		let canvas = document.createElement("canvas");
+		canvas.width = area.w * resolution;
+		canvas.height = area.h * resolution;
+		return new DrawBuffer(canvas, area, resolution);
+	}
+
+	static centered(canvas, pos, resolution) {
+		let area = Area.centered(pos, vec2(canvas.width / resolution, canvas.height / resolution));
+		return new DrawBuffer(canvas, area, resolution);
+	}
 
 	drawSprite(sprite, x, y) {
 		x = Math.round((x - this.area.x) * this.resolution);
@@ -121,9 +130,12 @@ class DrawBuffer {
 		this.ctx.globalCompositeOperation = "source-over";
 	}
 
-	drawBuffer(buffer) {
-		// todo: what if resolution is different
-		this.ctx.drawImage(buffer.canvas, (buffer.area.x - this.area.x) * this.resolution, (buffer.area.y - this.area.y) * this.resolution);
+	drawBuffer(buffer, offset) {
+		offset = offset || vec2(0, 0);
+		let overlap = this.area.intersection(buffer.area);
+		let dest = this.fromWorld(overlap);
+		let src = buffer.fromWorld(overlap.sub(offset));
+		this.ctx.drawImage(buffer.canvas, src.x, src.y, src.w, src.h, dest.x, dest.y, dest.w, dest.h);
 	}
 
 	clear() {
@@ -220,7 +232,6 @@ class Display {
 
 	constructor(canvas, spritemap, fuzzSprite) {
 		this.canvas = canvas;
-		this.outerCtx = canvas.getContext("2d");
 		let groundOffset = [0, 1/this.tileSize]
 		this.layers = [
 			new Layer("ground", {offset: groundOffset}),
@@ -245,15 +256,16 @@ class Display {
 		this.scale = 4;
 		this.init = false;
 		this.fuzzSprite = fuzzSprite;
+		this.entities = [];
 	}
 
 	setViewArea(area){
 		for (let layer of this.layers) {
-			let resolution = this.tileSize;
 			if (layer.dynamic) {
-				resolution *= this.scale;
+				continue;
 			}
-			let buffer = new DrawBuffer(area.grow(1), resolution);
+			let resolution = this.tileSize;
+			let buffer = DrawBuffer.create(area.grow(1), resolution);
 			if (this.buffers[layer.name]) {
 				buffer.drawBuffer(this.buffers[layer.name]);
 			}
@@ -267,13 +279,6 @@ class Display {
 		let borders = new GridU32(area);
 		borders.copyFrom(this.borders);
 		this.borders = borders;
-		// this.borders.clear();
-		// this.borders.forEach((border, key, map) => {
-		// 	let [x, y] = key.split(",").map(v => v|0)
-		// 	if (x < minX || y < minY || x > maxX || y > maxY) {
-		// 		map.delete(key);
-		// 	}
-		// });
 		this.init = true;
 	}
 
@@ -292,7 +297,6 @@ class Display {
 			let y = (i / area.w | 0) + area.y;
 			this._drawTile(x, y, mapping[cells[i]]);
 			this.borders.put(vec2(x, y), borderMap[cells[i]]);
-			// this.borders.set(hashpos(x, y), borderMap[cells[i]]);
 		}
 		area.grow(1).forEach(pos => this._drawBorder(pos.x, pos.y));
 	}
@@ -326,58 +330,64 @@ class Display {
 		}
 	}
 
-	drawDynamics(entities) {
-		// let visibleArea = this.screenToWorld(new Area(0, 0, this.canvas.width, this.canvas.height));
-		// this.buffers.creatures.move(visibleArea);
-		// this.buffers.effect.move(visibleArea);
-		this.buffers.creatures.clear();
-		this.buffers.effect.clear();
+	drawCreatures(buffer, entities) {
 		for (let entity of entities) {
 			if (entity.opacity) {
-				this.drawSprite(entity.sprite, entity.pos.x, entity.pos.y);
-				this._drawHealthBar(entity.health[0], entity.health[1], entity.pos.x, entity.pos.y);
+				let sprite = this.spritemap.sprite(entity.sprite);
+				if (!sprite) {
+					sprite = this.spritemap.sprite("unknowncreature");
+				}
+				buffer.drawSprite(sprite.layers.creatures, entity.pos.x, entity.pos.y);
+			}
+		}
+	}
+
+	drawEffects(buffer, entities) {
+		for (let entity of entities) {
+			if (entity.opacity && entity.health[0] !== entity.health[1]) {
+				this._drawHealthBar(buffer, entity.health[0], entity.health[1], entity.pos.x, entity.pos.y);
 			}
 			for (let wound of entity.wounds) {
 				if (wound.age < 10){
-					this._drawWound(wound.damage, wound.age, entity.pos, wound.rind);
+					this._drawWound(buffer, wound.damage, wound.age, entity.pos, wound.rind);
 				}
 			}
 		}
 	}
 
+	drawDynamics(entities) {
+		this.entities = entities;
+	}
+
 	drawSprite(spritename, x, y) {
 		let sprite = this.spritemap.sprite(spritename);
-		if (sprite) {
-			for (let layer in sprite.layers) {
-				this.buffers[layer].drawSprite(sprite.layers[layer], x, y);
-			}
-		} else {
-			this.buffers.base.fillRect(this._getColor(spritename), new Area(x, y, 1, 1));
+		if (!sprite) {
+			sprite = this.spritemap.sprite("unknown");
+		}
+		for (let layer in sprite.layers) {
+			this.buffers[layer].drawSprite(sprite.layers[layer], x, y);
 		}
 	}
 
-	_drawHealthBar(health, maxHealth, x, y) {
-		if (health === maxHealth) {
-			return;
-		}
+	_drawHealthBar(buffer, health, maxHealth, x, y) {
 		let ratio = health / maxHealth;
 		let width = 1;
 		let height = 1/8;
 		let offset = 1/8;
 		let ytop = y - height - offset;
-		let res = this.buffers.effect.resolution;
+		let res = buffer.resolution;
 		let splitX = Math.round((ratio * width) * res) / res + x;
 		let green = new Area(x, ytop, splitX - x, height);
 		let red = new Area(splitX, ytop, x + width - splitX, height);
-		this.buffers.effect.fillRect("#0f0", green);
-		this.buffers.effect.fillRect("#c00", red);
+		buffer.fillRect("#0f0", green);
+		buffer.fillRect("#c00", red);
 	}
 
-	_drawWound(damage, age, pos, rind) {
+	_drawWound(buffer, damage, age, pos, rind) {
 		let rx = rind / 0x1_00_00_00_00;
 		let ry = (rind % 0x1_00_00) / 0x1_00_00;
 		let roffset = vec2(0.3 + 0.4*rx, 0.4 + 0.4*ry - age/20);
-		this.buffers.effect.text(damage, pos.add(roffset), "#f77", "#f00");
+		buffer.text(damage, pos.add(roffset), "#f77", "#f00");
 	}
 
 	_drawTile(tileX, tileY, sprites) {
@@ -403,11 +413,13 @@ class Display {
 
 	_borderAt(x, y) {
 		return this.borders.getVal(vec2(x, y));
-		// return this.borders.get(hashpos(x, y));
 	}
 
 	setCenter(pos) {
 		this.center = pos;
+	}
+	setEntities(entities) {
+		this.entities = entities;
 	}
 
 	_getColor(name){
@@ -452,25 +464,18 @@ class Display {
 			return;
 		}
 		let tileSize = this.tileSize * this.scale;
-		this.outerCtx.imageSmoothingEnabled = false;
+		let mainBuffer = DrawBuffer.centered(this.canvas, this.center, tileSize);
 		for (let layer of this.layers) {
-			let buffer = this.buffers[layer.name];
-			let bufferCanvasSize = vec2(buffer.canvas.width, buffer.canvas.height);
-			let area = this.worldToScreen(buffer.area.add(layer.offset));
-			this.outerCtx.drawImage(
-				buffer.canvas,
-				area.x,
-				area.y,
-				area.w,
-				area.h
-			);
-			// let wa = this.screenToWorld(new Area(0, 0, this.canvas.width, this.canvas.height));
-			// let ba = buffer.fromWorld(wa.sub(layer.offset));
-			// this.outerCtx.drawImage(
-			// 	buffer.canvas,
-			// 	ba.x, ba.y, ba.w, ba.h,
-			// 	0, 0, this.canvas.width, this.canvas.height
-			// );
+			if (layer.dynamic) {
+				if (layer.name === "creatures") {
+					this.drawCreatures(mainBuffer, this.entities);
+				} else if (layer.name === "effect") {
+					this.drawEffects(mainBuffer, this.entities);
+				}
+			} else {
+				let buffer = this.buffers[layer.name];
+				mainBuffer.drawBuffer(buffer, layer.offset);
+			}
 		}
 	}
 

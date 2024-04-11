@@ -33,7 +33,7 @@ class Client {
 			e.target.send(JSON.stringify({introduction: {
 				name: this.username,
 				config: {
-					view_size: this.display.screenToWorld(new Area(0, 0, this.display.canvas.width, this.display.canvas.height)).size().ceil().arr()
+					view_size: this.display.viewport().size().ceil().arr()
 				}
 			}}));
 		});
@@ -187,7 +187,6 @@ class Client {
 		} else if (type === "world") {
 			this.handleWorldMessage(data[1]);
 			this.draw();
-			this.display.redraw();
 		} else if (type == "welcome") {
 			if (data[1].tick_millis) {
 				this.fps = 1000 / data[1].tick_millis;
@@ -265,7 +264,7 @@ class Client {
 
 	draw() {
 		this.display.setCenter(this.model.currentCenter());
-		this.display.drawDynamics(this.model.currentEntities(this.display.viewport()));
+		this.display.setEntities(this.model.currentEntities(this.display.viewport()));
 		this.display.redraw();
 	}
 
