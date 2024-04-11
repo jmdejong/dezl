@@ -143,5 +143,8 @@ class Area {
 		let h = Math.max(y_ - y, 0);
 		return new Area(x, y, w, h);
 	}
+	contains(pos) {
+		return pos.x >= this.x && pos.y >= this.y && pos.x < this.x + this.w && pos.y < this.y + this.h;
+	}
 }
 

@@ -195,11 +195,14 @@ class Model {
 		this.me = me;
 	}
 
-	currentEntities() {
-		return this.entities.map(entity => {
-			let s = entity.snapshot(this.shownTick);
-			return s;
-		});
+	currentEntities(viewport) {
+		let cutoff = viewport.grow(2);
+		return this.entities
+			.filter(entity => cutoff.contains(entity.pos))
+			.map(entity => {
+				let s = entity.snapshot(this.shownTick);
+				return s;
+			});
 	}
 
 	currentCenter() {

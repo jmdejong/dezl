@@ -258,14 +258,14 @@ class Client {
 		this.display.resize(window.innerWidth, window.innerHeight);
 		this.send({
 			configure: {
-				view_size: this.display.screenToWorld(new Area(0, 0, this.display.canvas.width, this.display.canvas.height)).size().ceil().arr()
+				view_size: this.display.viewport().size().ceil().arr()
 			}
 		});
 	}
 
 	draw() {
 		this.display.setCenter(this.model.currentCenter());
-		this.display.drawDynamics(this.model.currentEntities());
+		this.display.drawDynamics(this.model.currentEntities(this.display.viewport()));
 		this.display.redraw();
 	}
 

@@ -435,6 +435,10 @@ class Display {
 		return vec2(this.canvas.width, this.canvas.height).div(2).floor();
 	}
 
+	viewport() {
+		return this.screenToWorld(new Area(0, 0, this.canvas.width, this.canvas.height));
+	}
+
 	worldToScreen(pos) {
 		return pos.sub(this.center).mul(this.tileSize * this.scale).add(this.screenCenter())
 	}
