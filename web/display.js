@@ -219,6 +219,7 @@ class Layer {
 		this.clear = opts.clear|| ClearMode.Tile;
 		this.offset = vec2(...(opts.offset || [0, 0]));
 		this.dynamic = opts.dynamic || false;
+		this.target = opts.target;
 	}
 
 	clearMode() {
@@ -234,19 +235,19 @@ class Display {
 		this.canvas = canvas;
 		let groundOffset = [0, 1/this.tileSize]
 		this.layers = [
-			new Layer("ground", {offset: groundOffset}),
-			new Layer("fuzz", {offset: groundOffset, clear: ClearMode.None}),
-			new Layer("base", {offset: groundOffset}),
-			new Layer("borders", {offset: groundOffset, clear: ClearMode.None}),
-			new Layer("main"),
+			new Layer("ground", {target: "lo", offset: groundOffset}),
+			new Layer("fuzz", {target: "lo", offset: groundOffset, clear: ClearMode.None}),
+			new Layer("base", {target: "lo", offset: groundOffset}),
+			new Layer("borders", {target: "lo", offset: groundOffset, clear: ClearMode.None}),
+			new Layer("main", {target: "lo"}),
 			new Layer("creatures", {clear: ClearMode.None, dynamic: true}),
-			new Layer("wol", {offset: [-1, 0]}),
-			new Layer("wom", {offset: [0, 0]}),
-			new Layer("wor", {offset: [1, 0]}),
+			new Layer("wol", {target: "mid", offset: [-1, 0]}),
+			new Layer("wom", {target: "mid", offset: [0, 0]}),
+			new Layer("wor", {target: "mid", offset: [1, 0]}),
 			new Layer("effect", {clear: ClearMode.None, dynamic: true}),
-			new Layer("hol", {offset: [-1, -1]}),
-			new Layer("hom", {offset: [0, -1]}),
-			new Layer("hor", {offset: [1, -1]}),
+			new Layer("hol", {target: "hi", offset: [-1, -1]}),
+			new Layer("hom", {target: "hi", offset: [0, -1]}),
+			new Layer("hor", {target: "hi", offset: [1, -1]}),
 		];
 		this.buffers = {};
 		this.spritemap = spritemap;
@@ -463,24 +464,15 @@ class Display {
 	}
 
 	mergeLayers() {
-		this.mergedLayers = [];
-		let buffer = null;
+		this.mergedLayers = {
+			lo: DrawBuffer.create(this.area, this.tileSize),
+			mid: DrawBuffer.create(this.area, this.tileSize),
+			hi: DrawBuffer.create(this.area, this.tileSize)
+		}
 		for (let layer of this.layers) {
 			if (!layer.dynamic) {
-				if (!buffer) {
-					buffer = DrawBuffer.create(this.area, this.tileSize);
-				}
-				buffer.drawBuffer(this.buffers[layer.name], layer.offset)
-			} else {
-				if (buffer) {
-					this.mergedLayers.push({buffer: buffer});
-				}
-				this.mergedLayers.push({dynamic: layer.name});
-				buffer = null;
+				this.mergedLayers[layer.target].drawBuffer(this.buffers[layer.name], layer.offset);
 			}
-		}
-		if (buffer) {
-			this.mergedLayers.push({buffer: buffer});
 		}
 	}
 
@@ -493,17 +485,11 @@ class Display {
 		}
 		let tileSize = this.tileSize * this.scale;
 		let mainBuffer = DrawBuffer.centered(this.canvas, this.center, tileSize);
-		for (let layer of this.mergedLayers) {
-			if (layer.dynamic) {
-				if (layer.dynamic === "creatures") {
-					this.drawCreatures(mainBuffer, this.entities);
-				} else if (layer.dynamic === "effect") {
-					this.drawEffects(mainBuffer, this.entities);
-				}
-			} else {
-				mainBuffer.drawBuffer(layer.buffer, vec2(0, 0));
-			}
-		}
+		mainBuffer.drawBuffer(this.mergedLayers.lo, vec2(0, 0));
+		this.drawCreatures(mainBuffer, this.entities);
+		mainBuffer.drawBuffer(this.mergedLayers.mid, vec2(0, 0));
+		this.drawEffects(mainBuffer, this.entities);
+		mainBuffer.drawBuffer(this.mergedLayers.hi, vec2(0, 0));
 	}
 
 	resize(width, height) {

@@ -65,7 +65,7 @@ impl Default for PlayerConfig {
 	fn default() -> Self {
 		Self {
 			view_size: Pos::new(64, 64),
-			view_offset: 32,
+			view_offset: 16,
 		}
 	}
 }

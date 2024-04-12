@@ -33,7 +33,8 @@ class Client {
 			e.target.send(JSON.stringify({introduction: {
 				name: this.username,
 				config: {
-					view_size: this.display.viewport().size().ceil().arr()
+					view_size: this.display.viewport().size().ceil().arr(),
+					view_offset: 16,
 				}
 			}}));
 		});
