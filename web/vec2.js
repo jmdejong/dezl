@@ -106,6 +106,10 @@ class Area {
 		return new Vec2(this.x + this.w, this.y + this.h);
 	}
 
+	center() {
+		return new Vec2(this.x + this.w / 2, this.y + this.h / 2);
+	}
+
 	grow(s) {
 		return new Area(this.x-s, this.y-s, this.w+s*2, this.h+s*2);
 	}

@@ -89,6 +89,7 @@ function hashpos(x, y) {
 class DrawBuffer {
 
 	constructor(canvas, area, resolution) {
+		this.screenArea = new Area(0, 0, 1, 1);
 		this.canvas = canvas;
 		this.resolution = resolution;
 		this.area = area;
@@ -96,8 +97,8 @@ class DrawBuffer {
 		this.ctx.imageSmoothingEnabled = false;
 	}
 
-	static create(area, resolution) {
-		let canvas = document.createElement("canvas");
+	static create(area, resolution, canvas) {
+		canvas = canvas || document.createElement("canvas");
 		canvas.width = area.w * resolution;
 		canvas.height = area.h * resolution;
 		return new DrawBuffer(canvas, area, resolution);
@@ -231,9 +232,9 @@ class Layer {
 class Display {
 	tileSize = 8;
 
-	constructor(canvas, spritemap, fuzzSprite) {
-		this.canvas = canvas;
+	constructor(targets, spritemap, fuzzSprite) {
 		let groundOffset = [0, 1/this.tileSize]
+		this.targets = targets;
 		this.layers = [
 			new Layer("ground", {target: "lo", offset: groundOffset}),
 			new Layer("fuzz", {target: "lo", offset: groundOffset, clear: ClearMode.None}),
@@ -448,11 +449,11 @@ class Display {
 	}
 
 	screenCenter() {
-		return vec2(this.canvas.width, this.canvas.height).div(2).floor();
+		return this.screenArea.center().floor();
 	}
 
 	viewport() {
-		return this.screenToWorld(new Area(0, 0, this.canvas.width, this.canvas.height));
+		return this.screenToWorld(this.screenArea);
 	}
 
 	worldToScreen(pos) {
@@ -465,14 +466,19 @@ class Display {
 
 	mergeLayers() {
 		this.mergedLayers = {
-			lo: DrawBuffer.create(this.area, this.tileSize),
-			mid: DrawBuffer.create(this.area, this.tileSize),
-			hi: DrawBuffer.create(this.area, this.tileSize)
+			lo: DrawBuffer.create(this.area, this.tileSize, this.targets.lo),
+			mid: DrawBuffer.create(this.area, this.tileSize, this.targets.mid),
+			hi: DrawBuffer.create(this.area, this.tileSize, this.targets.hi)
 		}
 		for (let layer of this.layers) {
 			if (!layer.dynamic) {
 				this.mergedLayers[layer.target].drawBuffer(this.buffers[layer.name], layer.offset);
 			}
+		}
+		let staticArea = this.worldToScreen(this.area);
+		for (let canvas of [this.targets.lo, this.targets.mid, this.targets.hi]) {
+			canvas.style.width = staticArea.w + "px";
+			canvas.style.height = staticArea.h + "px";
 		}
 	}
 
@@ -481,20 +487,28 @@ class Display {
 			return;
 		}
 		if (!this.mergedLayers) {
-			this.mergeLayers()
+			this.mergeLayers();
 		}
 		let tileSize = this.tileSize * this.scale;
-		let mainBuffer = DrawBuffer.centered(this.canvas, this.center, tileSize);
-		mainBuffer.drawBuffer(this.mergedLayers.lo, vec2(0, 0));
-		this.drawCreatures(mainBuffer, this.entities);
-		mainBuffer.drawBuffer(this.mergedLayers.mid, vec2(0, 0));
-		this.drawEffects(mainBuffer, this.entities);
-		mainBuffer.drawBuffer(this.mergedLayers.hi, vec2(0, 0));
+		let creaturesBuffer = DrawBuffer.centered(this.targets.creatures, this.center, tileSize);
+		creaturesBuffer.clear();
+		this.drawCreatures(creaturesBuffer, this.entities);
+		let effectBuffer = DrawBuffer.centered(this.targets.effect, this.center, tileSize);
+		effectBuffer.clear()
+		this.drawEffects(effectBuffer, this.entities);
+		let staticArea = this.worldToScreen(this.area);
+		for (let canvas of [this.targets.lo, this.targets.mid, this.targets.hi]) {
+			canvas.style.left = staticArea.x + "px";
+			canvas.style.top = staticArea.y + "px";
+		}
 	}
 
 	resize(width, height) {
-		this.canvas.width = width;;
-		this.canvas.height = height;
+		this.screenArea = new Area(0, 0, width, height);
+		this.targets.creatures.width = width;
+		this.targets.creatures.height = height;
+		this.targets.effect.width = width;
+		this.targets.effect.height = height;
 		this.redraw();
 	}
 }

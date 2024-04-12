@@ -31,7 +31,13 @@
 	<input type="submit" value="Connect" />
 </form>
 <span id="game" class="main" hidden>
-	<canvas id="canvas" width=256 height=256></canvas>
+	<div class="canvases" id="canvases">
+		<canvas id="canvas-lo"></canvas>
+		<canvas id="canvas-creatures"></canvas>
+		<canvas id="canvas-mid"></canvas>
+		<canvas id="canvas-effect"></canvas>
+		<canvas id="canvas-hi"></canvas>
+	</div>
 	<span class="chat">
 		<ul id="messages" class="messages"></ul>
 		<form id="chatinput" class="chatinput" action="javascript:void(0);">

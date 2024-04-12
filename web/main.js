@@ -28,7 +28,14 @@ function start(username, host) {
 	let fuzzTemplate = new FuzzTemplate(document.getElementById("fuzz-template"), 1, 1);
 
 	let spritemap = loadSprites();
-	let display = new Display(canvas, spritemap, fuzzTemplate.asSprite());
+	let targets = {
+		lo: document.getElementById("canvas-lo"),
+		creatures: document.getElementById("canvas-creatures"),
+		mid: document.getElementById("canvas-mid"),
+		effect: document.getElementById("canvas-effect"),
+		hi: document.getElementById("canvas-hi"),
+	};
+	let display = new Display(targets, spritemap, fuzzTemplate.asSprite());
 	let client = new Client(username, host, display, parseParameters());
 	client.start()
 	document.getElementById("login").hidden = true;

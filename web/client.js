@@ -94,9 +94,9 @@ class Client {
 			KeyD: () => this.stopMoving(EAST),
 			ArrowRight: () => this.stopMoving(EAST),
 		}
-		this.display.canvas.addEventListener("click", e => {
+		document.getElementById("canvases").addEventListener("click", e => {
 			if (e.shiftKey) {
-				let to = this.display.screenToWorld(vec2(e.offsetX, e.offsetY)).floor();
+				let to = this.display.screenToWorld(vec2(e.clientX, e.clientY)).floor();
 				this.sendInput({path: [[to.x, to.y]]});
 			}
 		});

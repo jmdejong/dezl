@@ -10,10 +10,15 @@ html, body {
 }
 
 canvas {
-	background-color: black;
 	display: block;
 	image-rendering: pixelated;
+	position: absolute;
 }
+
+/*.canvases {
+	background-color: black;
+	overflow: hidden;
+}*/
 
 .loginform {
 	border: 1px solid black;
