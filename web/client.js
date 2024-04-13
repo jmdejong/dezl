@@ -244,7 +244,7 @@ class Client {
 		let isAtBottom = messages.lastElementChild && messages.scrollTop + messages.clientHeight >= messages.scrollHeight - messages.lastElementChild.scrollHeight;
 		messages.appendChild(li);
 		if (isAtBottom){
-			li.scrollIntoView();
+			messages.scrollTop = messages.scrollHeight;
 		}
 	}
 

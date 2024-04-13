@@ -15,10 +15,9 @@ canvas {
 	position: absolute;
 }
 
-/*.canvases {
-	background-color: black;
-	overflow: hidden;
-}*/
+.canvases {
+	position: absolute;
+}
 
 .loginform {
 	border: 1px solid black;
