@@ -183,7 +183,7 @@ mod main {
 			}
 			let save_done = Instant::now();
 			let elapsed_time = update_start.elapsed();
-			if elapsed_time >= Duration::from_millis(5) {
+			if elapsed_time >= Duration::from_millis(50) {
 				eprintln!(
 					"Step {} took {} milliseconds. read: {}, update: {}, view: {}, send: {}, save: {}",
 					world.time.0,

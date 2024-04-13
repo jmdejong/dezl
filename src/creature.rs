@@ -86,7 +86,11 @@ impl Creature {
 			Wound {
 				damage,
 				time,
-				rind: random::randomize_u32(random::randomize_pos(self.pos) + 37 * random::randomize_pos(self.home) + 17 * time.random_seed()),
+				rind: random::randomize_u32(
+					random::randomize_pos(self.pos)
+						.wrapping_add(random::randomize_pos(self.home).wrapping_mul(37))
+						.wrapping_add(time.random_seed().wrapping_mul(17))
+				),
 				by: self.id
 			}
 		);
@@ -188,7 +192,11 @@ impl Creature {
 			let p = self.pos + *d;
 			!creature_map.blocking(p, &ct) && !map.cell(p).blocking()
 		};
-		let rind = random::randomize_u32(random::randomize_pos(self.home) + random::randomize_pos(self.pos) + time.0 as u32);
+		let rind = random::randomize_u32(
+			random::randomize_pos(self.home)
+				.wrapping_add(random::randomize_pos(self.pos))
+				.wrapping_add(time.0 as u32)
+		);
 		match self.typ.mind() {
 			Mind::Player => {
 				if self.plan.is_none() {

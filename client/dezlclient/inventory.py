@@ -6,9 +6,9 @@ class Inventory:
 
 	def __init__(self, display):
 		self.display = display
-		self.actions = [("<inspect>", None), ("<take>", None), ("<fight>", None)]
+		self.actions = [("<inspect>", None), ("<take>", None)]
 		self.items = []
-		self.selector = 0
+		self.selector = 1
 
 	def size(self):
 		return len(self.items) + len(self.actions)
@@ -36,10 +36,9 @@ class Inventory:
 		if self.selector == 0:
 			return {"inspect": direction}
 		elif self.selector == 1:
-			return {"take": direction}
-		elif self.selector == 2:
-			return {"fight": direction}
+			return {"interact": [None, direction]}
 		else:
-			return {"use": [self.selector - len(self.actions), direction]}
+			selector = self.selector - len(self.actions)
+			return {"interact": [selector, direction]}
 
 

@@ -116,32 +116,22 @@ impl World {
 					creature.hear(SoundType::Explain, text);
 				}
 				Plan::Take(direction) => {
-					let easy_take = {
-						let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-						let pos = creature.pos + direction;
-						if let Some(item) = self.ground.take(pos) {
-							creature.inventory.add(item);
-							true
-						} else {
-							false
-						}
-					};
-					if !easy_take {
-						self.interact_creature(&id, direction, Item::Nothing);
-					}
+					self.take(&id, direction);
 				}
 				Plan::Use(index, direction) => {
-					let maybe_item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index);
-					if let Some(item) = maybe_item {
-						self.interact_creature(&id, direction, item);
-					}
+					self.use_item(&id, index, direction);
 				}
 				Plan::Fight(direction) => {
-					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					let pos = creature.pos + direction;
-					if let Some(opponent) = creature_map.get(&pos).iter().find(|o| creature.faction().is_enemy(o.faction)) {
-						creature.attack(self.creatures.get_creature_mut(&opponent.id).unwrap(), self.time);
-					}
+					self.fight(&id, direction, &creature_map);
+				}
+				Plan::Interact(Some(index), direction) => {
+					self.fight(&id, direction, &creature_map)
+						.or_else(|| self.use_item(&id, index, direction))
+						.or_else(|| self.take(&id, direction));
+				}
+				Plan::Interact(None, direction) => {
+					self.fight(&id, direction, &creature_map)
+						.or_else(|| self.take(&id, direction));
 				}
 			}
 		}
@@ -150,28 +140,50 @@ impl World {
 			creature.update(self.time);
 		}
 	}
+	
+	fn fight(&mut self, id: &CreatureId, direction: Option<Direction>, creature_map: &CreatureMap) -> Option<()> {
+		let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+		let pos = creature.pos + direction;
+		let opponent = creature_map.get(&pos).iter().find(|o| creature.faction().is_enemy(o.faction))?.id;
+		creature.attack(self.creatures.get_creature_mut(&opponent).unwrap(), self.time);
+		Some(())
+	}
+	
+	fn use_item(&mut self, id: &CreatureId, index: usize, direction: Option<Direction>) -> Option<()> {
+		let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index)?;
+		self.interact_creature(&id, direction, item)
+	}
+	
+	fn take(&mut self, id: &CreatureId, direction: Option<Direction>) -> Option<()> {
+		{
+			let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+			let pos = creature.pos + direction;
+			if let Some(item) = self.ground.take(pos) {
+				creature.inventory.add(item);
+				return Some(());
+			}
+		}
+		self.interact_creature(&id, direction, Item::Nothing)
+	}
 
-	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) {
+	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) -> Option<()> {
 		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let pos = creature.pos + direction;
 		let tile = self.ground.cell(pos);
-		let Some(interaction) = tile.interact(item, self.time)
-			else {
-				return;
-			};
+		let interaction = tile.interact(item, self.time)?;
 		if interaction.claim {
 			if let Some(player_id) = id.player() {
 				if self.claims.contains_key(player_id) {
 					creature.hear(BuildError, "Only one claim per player allowed".to_string());
-					return;
+					return Some(());
 				}
 				if self.claims.values().any(|p| p.distance_to(pos) < 64) {
 					creature.hear(BuildError, "Too close to existing claim".to_string());
-					return;
+					return Some(());
 				}
 				if pos.distance_to(self.ground.player_spawn()) < 96 {
 					creature.hear(BuildError, "Too close to spawn".to_string());
-					return;
+					return Some(());
 				}
 				self.claims.insert(*player_id, pos);
 			} else {
@@ -179,7 +191,7 @@ impl World {
 					BuildError,
 					"Only players can claim land and you're not a player. If you read this something has probably gone wrong.".to_string()
 				);
-				return;
+				return Some(());
 			}
 		}
 		if interaction.build {
@@ -189,18 +201,18 @@ impl World {
 						BuildError,
 						"Too far from land claim to build".to_string()
 					);
-					return;
+					return Some(());
 				}
 			} else {
 				creature.hear(
 					BuildError,
 					"Need land claim to build".to_string()
 				);
-				return;
+				return Some(());
 			}
 		}
 		if !creature.inventory.pay(interaction.cost) {
-			return;
+			return Some(());
 		}
 		for item in interaction.items {
 			creature.inventory.add(item);
@@ -214,6 +226,7 @@ impl World {
 		if let Some((message_type, message_text)) = interaction.message {
 			creature.hear(message_type, message_text);
 		}
+		Some(())
 	}
 
 	fn update_loaded_areas(&mut self) {
