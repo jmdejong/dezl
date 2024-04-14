@@ -318,10 +318,10 @@ impl World {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldSave {
-	name: String,
-	time: Timestamp,
-	ground: MapSave,
-	claims: HashMap<PlayerId, Pos>,
+	pub name: String,
+	pub time: Timestamp,
+	pub ground: MapSave,
+	pub claims: HashMap<PlayerId, Pos>,
 	pub mapdef: MapDef,
 }
 

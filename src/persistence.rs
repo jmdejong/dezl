@@ -25,6 +25,7 @@ macro_rules! inv {
 
 pub trait PersistentStorage {
 
+	fn list_worlds() -> Result<Vec<Result<(WorldSave, Box<dyn std::fmt::Debug>), LoaderError>>, LoaderError>;
 	fn initialize(world_name: &str) -> Result<Self, InitializeError> where Self: Sized;
 	
 	fn load_world(&self) -> Result<WorldSave, LoaderError>;
@@ -56,36 +57,29 @@ pub mod file {
 	impl FileStorage {
 
 
-		fn default_save_dir(world_name: &str) -> Option<PathBuf> {
-			if let Some(pathname) = env::var_os("XDG_DATA_HOME") {
+		fn default_save_dir() -> Option<PathBuf> {
+			if let Some(pathname) = env::var_os("DEZL_SAVES_PATH") {
+				Some(PathBuf::from(pathname))
+			} else if let Some(pathname) = env::var_os("DEZL_DATA_PATH") {
+				let mut path = PathBuf::from(pathname);
+				path.push("saves");
+				Some(path)
+			} else if let Some(pathname) = env::var_os("XDG_DATA_HOME") {
 				let mut path = PathBuf::from(pathname);
 				path.push("dezl");
 				path.push("saves");
-				path.push(world_name);
 				Some(path)
 			} else if let Some(pathname) = env::var_os("HOME") {
 				let mut path = PathBuf::from(pathname);
 				path.push(".dezl");
 				path.push("saves");
-				path.push(world_name);
 				Some(path)
 			} else {
 				None
 			}
 		}
-	}
 
-	impl PersistentStorage for FileStorage {
-
-		fn initialize(world_name: &str) -> Result<Self, InitializeError> {
-			let path = Self::default_save_dir(world_name).ok_or(InitializeError::NoDataHome)?;
-			Ok(Self {
-				directory: path
-			})
-		}
-
-		fn load_world(&self) -> Result<WorldSave, LoaderError> {
-			let mut path = self.directory.clone();
+		fn load_world_from_path(mut path: PathBuf) -> Result<WorldSave, LoaderError> {
 			path.push("world.save.json");
 			let text = fs::read_to_string(path).map_err(|err| {
 				if err.kind() == ErrorKind::NotFound {
@@ -96,6 +90,38 @@ pub mod file {
 			})?;
 			let state = inv!(serde_json::from_str(&text))?;
 			Ok(state)
+		}
+	}
+
+	impl PersistentStorage for FileStorage {
+
+		fn list_worlds() -> Result<Vec<Result<(WorldSave, Box<dyn std::fmt::Debug>), LoaderError>>, LoaderError> {
+			let save_dir = Self::default_save_dir().ok_or(LoaderError::MissingResource(aerr!("No save directory found")))?;
+			let worlds: Vec<Result<(WorldSave, Box<dyn std::fmt::Debug>), LoaderError>> = fs::read_dir(save_dir)
+				.map_err(|err| LoaderError::InvalidResource(Box::new(err)))?
+				.map(|r| match r {
+					Ok(entry) => {
+						let save = Self::load_world_from_path(entry.path())?;
+						let key: Box<dyn std::fmt::Debug> = Box::new(entry.path());
+						Ok((save, key))
+					}
+					Err(err) => Err(LoaderError::InvalidResource(Box::new(err)))
+				})
+				.collect();
+			Ok(worlds)
+		}
+
+		fn initialize(world_name: &str) -> Result<Self, InitializeError> {
+			let path = Self::default_save_dir()
+				.ok_or(InitializeError::NoDataHome)?
+				.join(world_name);
+			Ok(Self {
+				directory: path
+			})
+		}
+
+		fn load_world(&self) -> Result<WorldSave, LoaderError> {
+			Self::load_world_from_path(self.directory.clone())
 		}
 
 		fn load_player(&self, id: &PlayerId) -> Result<PlayerSave, LoaderError> {

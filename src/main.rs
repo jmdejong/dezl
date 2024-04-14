@@ -78,6 +78,15 @@ mod main {
 			WorldAction::Bench{iterations} => {
 				bench_view(iterations);
 			}
+			WorldAction::ListWorlds => {
+				let worlds = FileStorage::list_worlds().expect(&format!("Failed to list worlds"));
+				for entry in worlds {
+					match entry {
+						Ok((world, key)) => println!("World {:?}. location: {:?}, blueprint: {:?}, changed tiles: {:?}", world.name, key, world.mapdef, world.ground.len()),
+						Err(err) => println!("{:?}", err)
+					}
+				}
+			}
 		}
 	}
 

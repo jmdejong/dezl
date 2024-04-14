@@ -33,7 +33,9 @@ pub enum WorldAction {
 		/// the number of times to run the bench
 		#[arg(long, default_value_t=1000)]
 		iterations: usize,
-	}
+	},
+	/// Show a list of all the saved worlds
+	ListWorlds,
 }
 
 #[derive(Debug, Subcommand, Serialize, Deserialize, Clone)]
