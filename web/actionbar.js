@@ -5,8 +5,7 @@ class ActionBar {
 	constructor() {
 		this.actions = [
 			{name: "<inspect>", message: direction => ({inspect: direction})},
-			{name: "<take>", message: direction => ({take: direction})},
-			{name: "<fight>", message: direction => ({fight: direction})}
+			{name: "<take>", message: direction => ({interact: [null, direction]})}
 		];
 		this.selector = 0;
 		this.items = [];
@@ -81,7 +80,7 @@ class ActionBar {
 		if (this.selector < this.actions.length) {
 			return this.actions[this.selector].message(direction);
 		} else {
-			return {use: [this.selector - this.actions.length, direction]};
+			return {interact: [this.selector - this.actions.length, direction]};
 		}
 	}
 }
