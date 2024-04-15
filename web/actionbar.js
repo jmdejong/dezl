@@ -29,7 +29,7 @@ class ActionBar {
 
 		for (let i in items) {
 			let item = items[i];
-			let row = this._buildRow(i, item[0], item[1]);
+			let row = this._buildRow((i|0) + this.actions.length, item[0], item[1]);
 
 			table.appendChild(row);
 		}
@@ -38,7 +38,7 @@ class ActionBar {
 
 	_buildRow(index, name, quantity) {
 		let row = document.createElement("li");
-		row.onclick = () => this.select(index | 0);
+		row.onclick = () => this.select(index);
 		row.className = "inv-row selectable-row";
 
 		let nm = document.createElement("span");
