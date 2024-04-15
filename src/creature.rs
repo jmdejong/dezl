@@ -142,7 +142,7 @@ impl Creature {
 				self.movement = None;
 			}
 			Control::Direct(DirectChange::Path(mut path)) => {
-				path.truncate(16);
+				path.truncate(32);
 				path.retain(|p| self.pos.distance_to(*p) <= 32);
 				self.path = path;
 				self.movement = None;

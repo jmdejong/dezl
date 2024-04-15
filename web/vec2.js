@@ -7,6 +7,10 @@ class Vec2 {
 		this.y = y;
 	}
 
+	equals(other) {
+		return this.x === other.x && this.y === other.y;
+	}
+
 	surface() {
 		return this.x * this.y;
 	}
@@ -117,7 +121,7 @@ class Area {
 	forEach(fn) {
 		for (let x=this.x; x<this.x+this.w; ++x) {
 			for (let y=this.y; y<this.y+this.h; ++y) {
-				fn(new Vec2(x, y));
+				fn(new Vec2(x, y), (x - this.x) + (y - this.y) * this.w);
 			}
 		}
 	}

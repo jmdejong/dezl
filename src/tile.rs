@@ -364,10 +364,11 @@ impl Tile {
 		Self{ground, structure}
 	}
 	
-	pub fn sprites(self) -> Vec<Sprite> {
-		[self.structure.sprite(), self.ground.sprite()].into_iter()
-			.flatten()
-			.collect()
+	pub fn view(self) -> TileView {
+		let sprites = [self.structure.sprite(), self.ground.sprite()]
+			.into_iter()
+			.flatten();
+		TileView::new(sprites, self.blocking())
 	}
 	
 	pub fn blocking(self) -> bool {
@@ -488,7 +489,24 @@ impl<'de> Deserialize<'de> for Tile {
 }
 
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct TileView(Vec<TileProperty>);
+
+impl TileView {
+	fn new(sprites: impl Iterator<Item=Sprite>, blocking: bool) -> Self {
+		let mut properties: Vec<TileProperty> = sprites.map(TileProperty::Sprite).collect();
+		if blocking {
+			properties.push(TileProperty::Blocking);
+		}
+		Self(properties)
+	}
+}
 
 
-
-
+#[derive(Debug, Clone, Copy, PartialEq, Hash, Eq, Serialize)]
+pub enum TileProperty {
+	#[serde(rename="!b")]
+	Blocking,
+	#[serde(untagged)]
+	Sprite(Sprite),
+}

@@ -256,7 +256,7 @@ impl World {
 	fn draw_changes(&self) -> Option<ChangeMessage> {
 		Some(
 			self.ground.modified().into_iter()
-				.map(|(pos, tile)| (pos, tile.sprites()))
+				.map(|(pos, tile)| (pos, tile.view()))
 				.collect()
 		)
 	}

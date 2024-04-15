@@ -3,11 +3,11 @@
 class GridU32 {
 
 	constructor(area) {
-		this.area = area;
-		this.data = new Uint32Array(area.surface());
+		this.area = area || new Area(0, 0, 0, 0);
+		this.data = new Uint32Array(this.area.surface());
 	}
 
-	put(pos, val) {
+	setVal(pos, val) {
 		let x = pos.x - this.area.x;
 		let y = pos.y - this.area.y;
 		if (x >=0 && x < this.area.w && y >= 0 && y < this.area.h) {
@@ -26,6 +26,6 @@ class GridU32 {
 	}
 
 	copyFrom(other) {
-		this.area.intersection(other.area).forEach(pos => this.put(pos, other.getVal(pos)));
+		this.area.intersection(other.area).forEach(pos => this.setVal(pos, other.getVal(pos)));
 	}
 }

@@ -4,11 +4,11 @@ use serde::Serialize;
 use crate::{
 	pos::Pos,
 	pos::Area,
-	sprite::Sprite,
 	player::PlayerId,
 	timestamp::Timestamp,
 	creature::CreatureView,
 	map::SectionView,
+	tile::TileView,
 };
 
 
@@ -68,7 +68,7 @@ macro_rules! worldmessages {
 
 worldmessages!(me, change,  inventory, viewarea, section, dynamics);
 
-pub type ChangeMessage = Vec<(Pos, Vec<Sprite>)>;
+pub type ChangeMessage = Vec<(Pos, TileView)>;
 pub type InventoryMessage = (Vec<(String, Option<usize>)>, Option<usize>);
 pub type DynamicMessage = Vec<CreatureView>;
 

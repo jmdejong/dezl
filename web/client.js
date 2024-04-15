@@ -21,6 +21,7 @@ class Client {
 				// this.send = msg => setTimeout((() => this.sendRaw(JSON.stringify(msg))), this.delay);
 		// }
 		this.model = new Model();
+		this.map = new GameMap();
 		this.readyToDraw = false;
 		this.actionBar = new ActionBar();
 	}
@@ -97,7 +98,10 @@ class Client {
 		document.getElementById("canvases").addEventListener("click", e => {
 			if (e.shiftKey) {
 				let to = this.display.screenToWorld(vec2(e.clientX, e.clientY)).floor();
-				this.sendInput({path: [[to.x, to.y]]});
+				let path = this.map.path(this.model.me.pos, to);
+				if (path !== null) {
+					this.sendInput({path: path.map(pos => pos.arr())});
+				}
 			}
 		});
 		document.addEventListener("keyup", e => {
@@ -215,13 +219,18 @@ class Client {
 		}
 		if (m.viewarea) {
 			this.readyToDraw = true;
-			this.display.setViewArea(Area.parse(m.viewarea.area));
+			let area = Area.parse(m.viewarea.area)
+			this.display.setViewArea(area);
+			this.map.setArea(area);
 		}
 		if (m.section) {
-			this.display.drawSection(Area.parse(m.section.area), m.section.field, m.section.mapping);
+			let area = Area.parse(m.section.area);
+			this.display.drawSection(area, m.section.field, m.section.mapping);
+			this.map.setSection(area, m.section.field, m.section.mapping);
 		}
 		if (m.changecells) {
 			this.display.changeTiles(m.changecells);
+			this.map.setTiles(m.changecells);
 		}
 		if (m.dynamics) {
 			this.model.setEntities(m.dynamics);
@@ -279,3 +288,4 @@ class Client {
 		}
 	}
 }
+

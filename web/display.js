@@ -299,7 +299,7 @@ class Display {
 			let x = (i % area.w) + area.x;
 			let y = (i / area.w | 0) + area.y;
 			this._drawTile(x, y, mapping[cells[i]]);
-			this.borders.put(vec2(x, y), borderMap[cells[i]]);
+			this.borders.setVal(vec2(x, y), borderMap[cells[i]]);
 		}
 		area.grow(1).forEach(pos => this._drawBorder(pos.x, pos.y));
 		this.mergedLayers = null;
@@ -324,7 +324,7 @@ class Display {
 			let border = this._border(sprites);
 			let p = hashpos(x, y);
 			if (border !== this.borders.getVal(p)) {
-				this.borders.put(p, border);
+				this.borders.setVal(p, border);
 				this._drawBorder(x, y);
 				this._drawBorder(x+1, y);
 				this._drawBorder(x-1, y);
@@ -398,6 +398,9 @@ class Display {
 	_drawTile(tileX, tileY, sprites) {
 		for (let i=sprites.length; i --> 0;) {
 			let name = sprites[i];
+			if (name.startsWith("!")) {
+				continue;
+			}
 			this.drawSprite(name, tileX, tileY);
 		}
 	}

@@ -3,10 +3,9 @@ use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 use crate::{
 	pos::{Pos, Area, Direction},
-	tile::{Tile, Structure, Ground},
+	tile::{Tile, Structure, Ground, TileView},
 	basemap::{BaseMap, BaseMapImpl},
 	timestamp::{Timestamp, Duration},
-	sprite::Sprite,
 	creature::CreatureType as Npc,
 	item::Item,
 	randomtick
@@ -175,14 +174,14 @@ impl Map {
 
 	pub fn view(&self, area: Area) -> SectionView {
 		let mut values :Vec<usize> = Vec::with_capacity((area.size().x * area.size().y) as usize);
-		let mut mapping: Vec<Vec<Sprite>> = Vec::new();
+		let mut mapping: Vec<TileView> = Vec::new();
 		for tile in self.region(area) {
-			let tile_sprites = tile.sprites();
+			let tile_view = tile.view();
 			values.push(
-				if let Some(index) = mapping.iter().position(|x| x == &tile_sprites) {
+				if let Some(index) = mapping.iter().position(|x| x == &tile_view) {
 					index
 				} else {
-					mapping.push(tile_sprites);
+					mapping.push(tile_view);
 					mapping.len() - 1
 				}
 			);
@@ -195,11 +194,10 @@ impl Map {
 	}
 }
 
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct SectionView {
 	pub field: Vec<usize>,
-	pub mapping: Vec<Vec<Sprite>>,
+	pub mapping: Vec<TileView>,
 	pub area: Area
 }
 
