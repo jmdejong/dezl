@@ -133,6 +133,14 @@ class Creature {
 		}
 	}
 
+	lastActivity() {
+		if (this.activities.length) {
+			return this.activities[this.activities.length -1];
+		} else {
+			return new NoActivity();
+		}
+	}
+
 
 	snapshot(time) {
 		let wounds = this.wounds.map(wound => ({damage: wound.damage, age: time - wound.time, rind: wound.rind}));

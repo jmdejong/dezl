@@ -24,6 +24,7 @@ class Client {
 		this.map = new GameMap();
 		this.readyToDraw = false;
 		this.actionBar = new ActionBar();
+		this.path = null;
 	}
 
 	start(){
@@ -98,9 +99,9 @@ class Client {
 		document.getElementById("canvases").addEventListener("click", e => {
 			if (e.shiftKey) {
 				let to = this.display.screenToWorld(vec2(e.clientX, e.clientY)).floor();
-				let path = this.map.path(this.model.me.pos, to);
-				if (path !== null) {
-					this.sendInput({path: path.map(pos => pos.arr())});
+				this.path = this.map.path(this.model.me.pos, to);
+				if (this.path !== null) {
+					this.send({input: {path: this.path.map(pos => pos.arr())}});
 				}
 			}
 		});
@@ -177,6 +178,7 @@ class Client {
 	}
 
 	sendInput(input) {
+		this.path = null;
 		this.send({input: input});
 	}
 
@@ -205,6 +207,17 @@ class Client {
 		this.model.setTime(m.t);
 		if (m.me) {
 			this.model.setMe(m.me);
+			if (this.path && this.model.me.lastActivity() instanceof WalkActivity) {
+				let i = this.path.findIndex(p => this.model.me.pos.equals(p));
+				console.log(i);
+				if (i >= 0) {
+					while (i -->= 0) {
+						this.path.shift();
+					}
+					this.send({input: {path: this.path.map(pos => pos.arr())}});
+					console.log(i, this.path.length);
+				}
+			}
 			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;
 			document.getElementById("healthtext").textContent = `${m.me.h[0]}/${m.me.h[1]}`;
 			document.getElementById("healthvalue").style.width = `${m.me.h[0]/m.me.h[1]*100}%`;
