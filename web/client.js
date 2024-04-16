@@ -209,13 +209,11 @@ class Client {
 			this.model.setMe(m.me);
 			if (this.path && this.model.me.lastActivity() instanceof WalkActivity) {
 				let i = this.path.findIndex(p => this.model.me.pos.equals(p));
-				console.log(i);
 				if (i >= 0) {
 					while (i -->= 0) {
 						this.path.shift();
 					}
 					this.send({input: {path: this.path.map(pos => pos.arr())}});
-					console.log(i, this.path.length);
 				}
 			}
 			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;

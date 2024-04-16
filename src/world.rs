@@ -99,7 +99,19 @@ impl World {
 					let tile = self.ground.cell(newpos);
 					if !tile.blocking() && !creature_map.blocking(newpos, &CreatureTile::new(&creature)) {
 						creature_map.move_creature(&creature, &creature.pos, newpos);
-						creature.move_to(newpos, self.time);
+						creature.walk_to(newpos, self.time);
+					}
+				}
+				Plan::MoveD(dpos) => {
+					if dpos.x.abs() <= 1 && dpos.y.abs() <= 1 && dpos.size() > 0 {
+						let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+						let newpos = creature.pos + dpos;
+						let ct = CreatureTile::new(&creature);
+						let blocking = |p| self.ground.cell(p).blocking() || creature_map.blocking(p, &ct);
+						if !blocking(newpos) && !blocking(newpos - Pos::new(dpos.x, 0)) && !blocking(newpos - Pos::new(0, dpos.y)) {
+							creature_map.move_creature(&creature, &creature.pos, newpos);
+							creature.walk_to(newpos, self.time);
+						}
 					}
 				}
 				Plan::Inspect(direction) => {

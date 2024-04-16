@@ -104,6 +104,10 @@ impl Pos {
 		}
 		directions
 	}
+
+	pub fn normalize(&self) -> Self {
+		Self { x: self.x.signum(), y: self.y.signum() }
+	}
 }
 
 

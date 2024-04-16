@@ -11,6 +11,7 @@ use crate::{
 #[serde(rename_all="lowercase")]
 pub enum Plan {
 	Move(Direction),
+	MoveD(Pos),
 	Use(usize, Option<Direction>),
 	Take(Option<Direction>),
 	Inspect(Option<Direction>),

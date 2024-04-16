@@ -109,11 +109,11 @@ impl Creature {
 		self.activity.as_ref().is_some_and(|activity| matches!(activity.typ, ActivityType::Die(_)) && activity.is_active(tick))
 	}
 
-	pub fn move_to(&mut self, newpos: Pos, time: Timestamp) {
+	pub fn walk_to(&mut self, newpos: Pos, time: Timestamp) {
 		self.activity = Some(Activity {
 			typ: ActivityType::Walk(self.pos),
 			start: time,
-			end: time + self.typ.walk_cooldown()
+			end: time + Duration(self.typ.walk_cooldown().0 * self.pos.distance_to(newpos) as i64)
 		});
 		self.pos = newpos;
 	}
@@ -209,15 +209,8 @@ impl Creature {
 						self.path.drain(..(idx+1));
 					}
 					if let Some(path_next) = self.path.first() {
-						let directions: Vec<Direction> = self.pos.directions_to(*path_next)
-							.into_iter()
-							.filter(can_walk)
-							.collect();
-						if !directions.is_empty() {
-							let direction = *random::pick(random::randomize_u32(rind + 2849), &directions);
-							self.plan = Some(Plan::Move(direction));
-							return;
-						}
+						self.plan = Some(Plan::MoveD((*path_next - self.pos).normalize()));
+						return;
 					}
 
 					if self.target.is_none() {

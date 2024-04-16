@@ -19,8 +19,8 @@ class GameMap {
 			return null;
 		}
 		let visited = new GridU32(this.grid.area);
-		let fringe = new PriorityQueue(node => node.path.length + node.pos.distanceTo(to));
-		fringe.add({pos: from, path: []});
+		let fringe = new PriorityQueue(node => node.cost + node.pos.distanceTo(to));
+		fringe.add({pos: from, path: [], cost: 0});
 		while (fringe.heap.length) {
 			let node = fringe.remove();
 			if (node.pos.equals(to)) {
@@ -34,7 +34,13 @@ class GameMap {
 			for (let d of [vec2(0,-1), vec2(-1,0), vec2(0,1), vec2(1,0)]) {
 				let pos = node.pos.add(d);
 				if (this.grid.area.contains(pos) && !this.blocking(pos) && visited.getVal(pos) === 0) {
-					fringe.add({pos: pos, path: node.path.concat(pos)});
+					fringe.add({pos: pos, path: node.path.concat(pos), cost: node.cost + 1});
+				}
+			}
+			for (let d of [vec2(-1,-1), vec2(-1,1), vec2(1,-1), vec2(1,1)]) {
+				let pos = node.pos.add(d);
+				if (this.grid.area.contains(pos) && !this.blocking(pos) && !this.blocking(pos.sub(vec2(d.x, 0))) && !this.blocking(pos.sub(vec2(0, d.y))) && visited.getVal(pos) === 0) {
+					fringe.add({pos: pos, path: node.path.concat(pos), cost: node.cost + 1.99});
 				}
 			}
 		}
