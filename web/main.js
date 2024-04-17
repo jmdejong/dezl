@@ -6,17 +6,46 @@ window.addEventListener("load", main);
 function main(){
 	let loginForm = document.getElementById("login");
 	loginForm.hidden = false;
-	let hostInput = document.getElementById("hostinput");
+	let hostInput = loginForm.hostinput;
 	if (hostInput.value === hostInput.defaultValue) {
 		hostInput.value = `ws://${window.location.hostname || "localhost"}:9231`;
 	}
+	let nameInput = loginForm.username;
+	if (!nameInput.value || nameInput.value === nameInput.defaultValue) {
+		nameInput.value = window.localStorage.getItem("dezl_username") || generateRandomName();
+	}
+	document.getElementById("randomname").addEventListener("click", _ => nameInput.value = generateRandomName());
 
 	let params = new URLSearchParams(window.location.search);
 	if (params.get("login")) {
 		start(params.get("login"), loginForm.host.value);
 	} else {
-		loginForm.addEventListener("submit", e => start(e.target.username.value, e.target.host.value));
+		loginForm.addEventListener("submit", e => {
+			let username = e.target.username.value;
+			if (username) {
+				window.localStorage.setItem("dezl_username", username);
+			}
+			start(username, e.target.host.value)
+		});
 	}
+}
+
+function generateRandomName() {
+	let vowels = "aaaaeeeeeeiiioooouu";
+	let consonants = "bbccdddffgghhjjkkllmmmnnnnppqrrrrsssstttttvvwxyz";
+
+	name = ""
+	let nSyllables = 2 + Math.random() * 2;
+	for (let i=0; i<nSyllables; ++i) {
+		if (Math.random() > 0.5) {
+			name += consonants.charAt((Math.random()*consonants.length)|0);
+		}
+		name += vowels.charAt((Math.random()*vowels.length)|0);
+		if (Math.random() > 0.5) {
+			name += consonants.charAt((Math.random()*consonants.length)|0);
+		}
+	}
+	return name;
 }
 
 
