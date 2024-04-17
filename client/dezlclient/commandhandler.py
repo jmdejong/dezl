@@ -85,7 +85,7 @@ class CommandHandler:
 		inventory.selector = target
 
 	def act(self, direction):
-		self.input(self.client.inventory.action(direction))
+		self.input(self.client.inventory.action(direction, self.client.playerPos))
 
 	def chat(self, text):
 		self.client.sendChat( text)

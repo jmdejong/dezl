@@ -1,11 +1,6 @@
 "use strict";
 
 
-const NORTH = "north";
-const SOUTH = "south";
-const EAST = "east";
-const WEST = "west";
-
 class Client {
 	constructor(username, host, display, settings) {
 		this.username = username;
@@ -172,7 +167,7 @@ class Client {
 	}
 
 	act(direction) {
-		this.sendInput(this.actionBar.selectedAction(direction));
+		this.sendInput(this.actionBar.selectedAction(direction, this.model.me.pos));
 	}
 
 	sendInput(input) {

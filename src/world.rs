@@ -118,18 +118,19 @@ impl World {
 						}
 					}
 				}
-				Plan::Inspect(direction) => {
+				Plan::Inspect(pos) => {
 					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
-					let pos = creature.pos + direction;
-					let tile = self.ground.cell(pos);
-					let mut text = tile.inspect();
-					for other in creature_map.get(&pos) {
-						if other.id != id {
-							let name = &self.creatures.get_creature(&other.id).unwrap().name;
-							text = format!("{} | {}", text, name);
+					if pos.distance_to(creature.pos) < 32 {
+						let tile = self.ground.cell(pos);
+						let mut text = tile.inspect();
+						for other in creature_map.get(&pos) {
+							if other.id != id {
+								let name = &self.creatures.get_creature(&other.id).unwrap().name;
+								text = format!("{} | {}", text, name);
+							}
 						}
+						creature.hear(SoundType::Explain, text);
 					}
-					creature.hear(SoundType::Explain, text);
 				}
 				Plan::Take(direction) => {
 					self.take(&id, direction);

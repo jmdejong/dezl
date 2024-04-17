@@ -1,5 +1,10 @@
 "use strict";
 
+const NORTH = "north";
+const SOUTH = "south";
+const EAST = "east";
+const WEST = "west";
+
 class Vec2 {
 
 	constructor(x, y) {
@@ -75,6 +80,21 @@ class Vec2 {
 		return [this.x, this.y];
 	}
 
+	moved(direction) {
+		if (direction === NORTH) {
+			return new Vec2(this.x, this.y-1);
+		} else if (direction === SOUTH) {
+			return new Vec2(this.x, this.y+1);
+		} else if (direction === EAST) {
+			return new Vec2(this.x+1, this.y);
+		} else if (direction === WEST) {
+			return new Vec2(this.x-1, this.y);
+		} else if (!direction) {
+			return this;
+		} else {
+			console.error("invalid direction", direction);
+		}
+	}
 }
 
 function vec2(x, y) {

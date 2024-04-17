@@ -4,7 +4,7 @@ class ActionBar {
 
 	constructor() {
 		this.actions = [
-			{name: "<inspect>", message: direction => ({inspect: direction})},
+			{name: "<inspect>", message: (direction, pos) => ({inspect: pos.moved(direction).arr()})},
 			{name: "<take>", message: direction => ({interact: [null, direction]})}
 		];
 		this.selector = 0;
@@ -15,7 +15,7 @@ class ActionBar {
 			let row = this._buildRow(i, action.name, null);
 			actionTable.appendChild(row);
 		}
-		this.select(0);
+		this.select(1);
 	}
 
 	setInventory(items) {
@@ -76,9 +76,9 @@ class ActionBar {
 		this.select((this.selector + n + dif) % n);
 	}
 
-	selectedAction(direction) {
+	selectedAction(direction, pos) {
 		if (this.selector < this.actions.length) {
-			return this.actions[this.selector].message(direction);
+			return this.actions[this.selector].message(direction, pos);
 		} else {
 			return {interact: [this.selector - this.actions.length, direction]};
 		}
