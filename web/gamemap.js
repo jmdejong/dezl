@@ -80,12 +80,18 @@ class GameMap {
 						points.push(point);
 					}
 				} else if (d.mLength() === 2) {
-					points.push(...this.jumpDiagonal(node.pos, d, a, to));
+					let point = this.jumpDiagonal(node.pos, d, a, to);
+					if (point) {
+						points.push(point);
+					}
 				} else {
 					console.error("Unknown direction ", d);
 				}
 			}
 			for (let point of points) {
+				if (!point.pos) {
+					console.error(point);
+				}
 				fringe.add({pos: point.pos, path: node.path.concat(point.pos), cost: node.cost + point.cost, directions: point.directions});
 			}
 		}
@@ -93,14 +99,13 @@ class GameMap {
 		return null;
 	}
 
-	jumpOrthagonal(start, d, a, target, cost) {
+	jumpOrthagonal(start, d, a, target) {
 		let dl = vec2(d.y, d.x);
 		let dr = vec2(-d.y, -d.x);
 		let oldPos = start;
 		let pos = oldPos.add(d);
-		cost = cost || 0;
+		let cost = 1;
 		while (a(pos)) {
-			++cost;
 			if (pos.equals(target)) {
 				return {pos: pos, cost: cost, directions: []};
 			}
@@ -117,6 +122,7 @@ class GameMap {
 
 			oldPos = pos;
 			pos = oldPos.add(d);
+			++cost;
 		}
 		return null;
 	}
@@ -128,22 +134,16 @@ class GameMap {
 		let dr = vec2(0, d.y);
 		while (a(pos) && a(pos.sub(dl)) && a(pos.sub(dr))) {
 			if (pos.equals(target)) {
-				return [{pos: pos, cost: cost, directions: []}];
+				return {pos: pos, cost: cost, directions: []};
 			}
-			let next = [
-				this.jumpOrthagonal(pos, dl, a, target, cost),
-				this.jumpOrthagonal(pos, dr, a, target, cost),
-			]
-				.filter(p => p);
-			if (next.length > 0) {
-				next.push({pos: pos, cost: cost + DIAGONAL_COST, directions: [d]});
-				return next;
+			if (this.jumpOrthagonal(pos, dl, a, target) || this.jumpOrthagonal(pos, dr, a, target)) {
+				return {pos: pos, cost: cost, directions: [d, dl, dr]};
 			}
 
 			cost += DIAGONAL_COST;
 			pos = pos.add(d);
 		}
-		return [];
+		return null;
 	}
 
 	setArea(area) {
