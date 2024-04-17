@@ -6,7 +6,6 @@ use crate::{
 	item::Item,
 	action::{Action, InteractionType, CraftType, Interactable, InteractionResult},
 	timestamp::Timestamp,
-	worldmessages::SoundType,
 	hashmap,
 	crop::Crop,
 	creature::CreatureType as Npc,
@@ -87,7 +86,6 @@ pub enum Ground {
 #[func(fn sprite(self) -> Option<Sprite>)]
 #[func(fn blocking(self) -> bool {false})]
 #[func(pub fn is_open(self) -> bool {false})]
-#[func(fn explain(self) -> Option<String>)]
 #[func(fn interactions(self) -> Vec<Interactable> {Vec::new()})]
 #[func(fn take(self) -> Option<Item>)]
 #[func(fn describe(&self) -> Option<&str>)]
@@ -214,8 +212,7 @@ pub enum Structure {
 	
 	#[assoc(sprite = Sprite::Sage)]
 	#[assoc(blocking = true)]
-	#[assoc(explain = "Sage".to_string())]
-	#[assoc(describe = "Sage. An old wise person with grey hair. This sage can tell you about items in your inventory")]
+	#[assoc(describe = "Sage. An old wise person with grey hair. This sage is too busy meditating to talk")]
 	Sage,
 	
 	#[assoc(sprite = Sprite::Fireplace)]
@@ -392,12 +389,6 @@ impl Tile {
 	}
 	
 	pub fn act(self, action: Action, item: Item, time: Timestamp) -> Option<InteractionResult> {
-		if let Some(name) = self.structure.explain() {
-			return Some(InteractionResult {
-				message: Some((SoundType::Explain, format!("{}: {}", name, item.description()))),
-				..Default::default()
-			});
-		}
 		match action {
 			Action::Interact(interact) => {
 				let mut result = self.structure.interactables()
