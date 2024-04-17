@@ -97,12 +97,10 @@ class Client {
 			ArrowRight: () => this.stopMoving(EAST),
 		}
 		document.getElementById("canvases").addEventListener("click", e => {
-			if (e.shiftKey) {
-				let to = this.display.screenToWorld(vec2(e.clientX, e.clientY)).floor();
-				this.path = this.map.jumpPath(this.model.me.pos, to);
-				if (this.path !== null) {
-					this.send({input: {path: this.path.map(pos => pos.arr())}});
-				}
+			let to = this.display.screenToWorld(vec2(e.clientX, e.clientY)).floor();
+			this.path = this.map.jumpPath(this.model.me.pos, to);
+			if (this.path !== null) {
+				this.send({input: {path: this.path.map(pos => pos.arr())}});
 			}
 		});
 		document.addEventListener("keyup", e => {
@@ -207,7 +205,7 @@ class Client {
 		this.model.setTime(m.t);
 		if (m.me) {
 			this.model.setMe(m.me);
-			if (this.path && this.model.me.lastActivity() instanceof WalkActivity) {
+			if (this.path && m.me.a && m.me.a.M) {
 				let i = this.path.findIndex(p => this.model.me.pos.equals(p));
 				if (i >= 0) {
 					while (i -->= 0) {
@@ -215,6 +213,8 @@ class Client {
 					}
 					this.send({input: {path: this.path.map(pos => pos.arr())}});
 				}
+			} else {
+				this.path = null;
 			}
 			document.getElementById("coordinates").textContent = `${m.me.p[0]}, ${m.me.p[1]}`;
 			document.getElementById("healthtext").textContent = `${m.me.h[0]}/${m.me.h[1]}`;

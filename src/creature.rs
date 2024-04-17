@@ -34,7 +34,7 @@ pub struct Creature {
 	home: Pos,
 	is_dead: bool,
 	movement: Option<Direction>,
-	path: Vec<Pos>,
+	pub path: Vec<Pos>,
 }
 
 impl Creature {
@@ -304,23 +304,23 @@ impl Creature {
 		self.typ.faction()
 	}
 
-	pub fn view(&self) -> CreatureView {
+	pub fn view(&self, tick: Timestamp) -> CreatureView {
 		CreatureView {
 			id: self.id,
 			pos: self.pos,
 			sprite: self.typ.sprite(),
 			blocking: self.blocking(),
-			activity: self.activity.clone(),
+			activity: self.activity.clone().filter(|activity| activity.is_active(tick)),
 			health: (self.health.max(0), self.typ.health()),
 			wounds: self.wounds.iter().rev().cloned().collect(),
 			walk_speed: None,
 		}
 	}
 
-	pub fn view_ext(&self) -> CreatureView {
+	pub fn view_ext(&self, tick: Timestamp) -> CreatureView {
 		CreatureView {
 			walk_speed: Some((1, self.typ.walk_cooldown())),
-			..self.view()
+			..self.view(tick)
 		}
 	}
 }

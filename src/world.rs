@@ -100,6 +100,8 @@ impl World {
 					if !tile.blocking() && !creature_map.blocking(newpos, &CreatureTile::new(&creature)) {
 						creature_map.move_creature(&creature, &creature.pos, newpos);
 						creature.walk_to(newpos, self.time);
+					} else {
+						creature.path = Vec::new();
 					}
 				}
 				Plan::MoveD(dpos) => {
@@ -111,6 +113,8 @@ impl World {
 						if !blocking(newpos) && !blocking(newpos - Pos::new(dpos.x, 0)) && !blocking(newpos - Pos::new(0, dpos.y)) {
 							creature_map.move_creature(&creature, &creature.pos, newpos);
 							creature.walk_to(newpos, self.time);
+						} else {
+							creature.path = Vec::new();
 						}
 					}
 				}
@@ -154,7 +158,7 @@ impl World {
 	}
 	
 	fn fight(&mut self, id: &CreatureId, direction: Option<Direction>, creature_map: &CreatureMap) -> Option<()> {
-		let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+		let mut creature = self.creatures.get_creature_mut(id).unwrap();
 		let pos = creature.pos + direction;
 		let opponent = creature_map.get(&pos).iter().find(|o| creature.faction().is_enemy(o.faction))?.id;
 		creature.attack(self.creatures.get_creature_mut(&opponent).unwrap(), self.time);
@@ -162,20 +166,20 @@ impl World {
 	}
 	
 	fn use_item(&mut self, id: &CreatureId, index: usize, direction: Option<Direction>) -> Option<()> {
-		let item = self.creatures.get_creature(&id).unwrap().inventory.get_item(index)?;
-		self.interact_creature(&id, direction, item)
+		let item = self.creatures.get_creature(id).unwrap().inventory.get_item(index)?;
+		self.interact_creature(id, direction, item)
 	}
 	
 	fn take(&mut self, id: &CreatureId, direction: Option<Direction>) -> Option<()> {
 		{
-			let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+			let mut creature = self.creatures.get_creature_mut(id).unwrap();
 			let pos = creature.pos + direction;
 			if let Some(item) = self.ground.take(pos) {
 				creature.inventory.add(item);
 				return Some(());
 			}
 		}
-		self.interact_creature(&id, direction, Item::Nothing)
+		self.interact_creature(id, direction, Item::Nothing)
 	}
 
 	fn interact_creature(&mut self, id: &CreatureId, direction: Option<Direction>, item: Item) -> Option<()> {
@@ -279,7 +283,7 @@ impl World {
 		let dynamics: Vec<CreatureView> = self.creatures.dead()
 			.filter(|c| c.is_dying(self.time))
 			.chain(self.creatures.all())
-			.map(|creature| creature.view())
+			.map(|creature| creature.view(self.time))
 			.collect();
 		for (id, body) in self.creatures.iter_players() {
 			let mut wm = WorldMessage::new(self.time);
@@ -289,7 +293,7 @@ impl World {
 				wm.change = changes.clone();
 			}
 			wm.dynamics = Some(dynamics.clone());
-			wm.me = Some(body.view_ext());
+			wm.me = Some(body.view_ext(self.time));
 			wm.inventory = Some(body.inventory.view());
 			wm.sounds = body.heard_sounds.clone();
 
