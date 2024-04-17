@@ -19,6 +19,10 @@ class Vec2 {
 		return Math.hypot(this.x, this.y);
 	}
 
+	mLength() {
+		return Math.abs(this.x) + Math.abs(this.y);
+	}
+
 	add(v) {
 		return new Vec2(this.x + v.x, this.y + v.y);
 	}
@@ -57,6 +61,10 @@ class Vec2 {
 
 	distanceTo(other) {
 		return this.sub(other).length();
+	}
+
+	mDistanceTo(other) {
+		return this.sub(other).mLength();
 	}
 
 	clone() {

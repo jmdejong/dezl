@@ -1,7 +1,7 @@
 "use strict";
 
 const BLOCKING = 1;
-
+const DIAGONAL_COST = 1.99;
 
 class GameMap {
 
@@ -21,9 +21,12 @@ class GameMap {
 		let visited = new GridU32(this.grid.area);
 		let fringe = new PriorityQueue(node => node.cost + node.pos.distanceTo(to));
 		fringe.add({pos: from, path: [], cost: 0});
+		let steps = 0;
 		while (fringe.heap.length) {
+			++steps;
 			let node = fringe.remove();
 			if (node.pos.equals(to)) {
+				console.log("steps", steps);
 				console.log("path", node);
 				return node.path;
 			}
@@ -46,6 +49,101 @@ class GameMap {
 		}
 		console.log("path failed");
 		return null;
+	}
+
+	jumpPath(from, to) {
+		if (!this.grid.area.contains(to)) {
+			return null;
+		}
+		let visited = new GridU32(this.grid.area);
+		let fringe = new PriorityQueue(node => node.cost + node.pos.distanceTo(to));
+		fringe.add({pos: from, path: [], cost: 0, directions: [vec2(0,-1), vec2(-1,0), vec2(0,1), vec2(1,0), vec2(-1,-1), vec2(-1,1), vec2(1,-1), vec2(1,1)]});
+		let a = pos => this.grid.area.contains(pos) && !this.blocking(pos);
+		let steps=0;
+		while (fringe.heap.length) {
+			steps++;
+			let node = fringe.remove();
+			if (node.pos.equals(to)) {
+				console.log("steps", steps);
+				console.log("path", node);
+				return node.path;
+			}
+			if (visited.getVal(node.pos) === 1) {
+				continue;
+			}
+			visited.setVal(node.pos, 1);
+			let points = [];
+			for (let d of node.directions) {
+				if (d.mLength() === 1) {
+					let point = this.jumpOrthagonal(node.pos, d, a, to);
+					if (point) {
+						points.push(point);
+					}
+				} else if (d.mLength() === 2) {
+					points.push(...this.jumpDiagonal(node.pos, d, a, to));
+				} else {
+					console.error("Unknown direction ", d);
+				}
+			}
+			for (let point of points) {
+				fringe.add({pos: point.pos, path: node.path.concat(point.pos), cost: node.cost + point.cost, directions: point.directions});
+			}
+		}
+		console.log("path failed");
+		return null;
+	}
+
+	jumpOrthagonal(start, d, a, target, cost) {
+		let dl = vec2(d.y, d.x);
+		let dr = vec2(-d.y, -d.x);
+		let oldPos = start;
+		let pos = oldPos.add(d);
+		cost = cost || 0;
+		while (a(pos)) {
+			++cost;
+			if (pos.equals(target)) {
+				return {pos: pos, cost: cost, directions: []};
+			}
+			let directions = [d];
+			if (a(pos.add(dl)) && !a(oldPos.add(dl))) {
+				directions.push(dl, d.add(dl));
+			}
+			if (a(pos.add(dr)) && !a(oldPos.add(dr))) {
+				directions.push(dr, d.add(dr));
+			}
+			if (directions.length !== 1) {
+				return {pos: pos, cost: cost, directions: directions};
+			}
+
+			oldPos = pos;
+			pos = oldPos.add(d);
+		}
+		return null;
+	}
+
+	jumpDiagonal(start, d, a, target) {
+		let pos = start.add(d);
+		let cost = DIAGONAL_COST;
+		let dl = vec2(d.x, 0);
+		let dr = vec2(0, d.y);
+		while (a(pos) && a(pos.sub(dl)) && a(pos.sub(dr))) {
+			if (pos.equals(target)) {
+				return [{pos: pos, cost: cost, directions: []}];
+			}
+			let next = [
+				this.jumpOrthagonal(pos, dl, a, target, cost),
+				this.jumpOrthagonal(pos, dr, a, target, cost),
+			]
+				.filter(p => p);
+			if (next.length > 0) {
+				next.push({pos: pos, cost: cost + DIAGONAL_COST, directions: [d]});
+				return next;
+			}
+
+			cost += DIAGONAL_COST;
+			pos = pos.add(d);
+		}
+		return [];
 	}
 
 	setArea(area) {

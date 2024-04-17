@@ -99,7 +99,7 @@ class Client {
 		document.getElementById("canvases").addEventListener("click", e => {
 			if (e.shiftKey) {
 				let to = this.display.screenToWorld(vec2(e.clientX, e.clientY)).floor();
-				this.path = this.map.path(this.model.me.pos, to);
+				this.path = this.map.jumpPath(this.model.me.pos, to);
 				if (this.path !== null) {
 					this.send({input: {path: this.path.map(pos => pos.arr())}});
 				}
