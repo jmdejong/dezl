@@ -33,6 +33,7 @@ class CommandHandler:
 			"ij": self.ijson,
 			"hy": self.hy,
 			"act": self.act,
+			"inspectitem": self.inspectItem,
 			"selectrel": self.selectRel,
 			"selectidx": self.selectIdx,
 			"moveselected": self.moveSelected,
@@ -64,7 +65,8 @@ class CommandHandler:
 	# Commands
 	
 	def input(self, action):
-		self.client.sendInput(action)
+		if action != None:
+			self.client.sendInput(action)
 	
 	def move(self, direction):
 		self.input({"move": direction})
@@ -86,6 +88,9 @@ class CommandHandler:
 
 	def act(self, direction):
 		self.input(self.client.inventory.action(direction, self.client.playerPos))
+
+	def inspectItem(self):
+		self.input(self.client.inventory.inspect())
 
 	def chat(self, text):
 		self.client.sendChat( text)

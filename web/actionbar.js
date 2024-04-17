@@ -83,4 +83,12 @@ class ActionBar {
 			return {interact: [this.selector - this.actions.length, direction]};
 		}
 	}
+
+	inspect() {
+		if (this.selector < this.actions.length) {
+			return null;
+		} else {
+			return {inspectitem: this.selector - this.actions.length};
+		}
+	}
 }

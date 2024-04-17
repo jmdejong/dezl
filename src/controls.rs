@@ -15,6 +15,7 @@ pub enum Plan {
 	Use(usize, Option<Direction>),
 	Take(Option<Direction>),
 	Inspect(Pos),
+	InspectItem(usize),
 	Fight(Option<Direction>),
 	Interact(Option<usize>, Option<Direction>),
 }

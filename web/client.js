@@ -50,6 +50,7 @@ class Client {
 			NumpadSubtract: () => this.actionBar.selectRel(-1),
 			Equal: () => this.actionBar.selectRel(1),
 			Minus: () => this.actionBar.selectRel(-1),
+			KeyI: () => this.sendInput(this.actionBar.inspect()),
 		};
 		let shiftKeymap = {
 			KeyW: () => this.act(NORTH),
@@ -171,6 +172,9 @@ class Client {
 	}
 
 	sendInput(input) {
+		if (!input) {
+			return;
+		}
 		this.path = null;
 		this.send({input: input});
 	}

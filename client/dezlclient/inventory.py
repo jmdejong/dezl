@@ -41,6 +41,12 @@ class Inventory:
 			selector = self.selector - len(self.actions)
 			return {"interact": [selector, direction]}
 
+	def inspect(self):
+		if self.selector < len(self.actions):
+			return None
+		else:
+			return {"inspectitem": self.selector - len(self.actions)}
+
 def _movepos(pos, direction):
 	if direction == "north":
 		return (pos[0], pos[1] - 1)

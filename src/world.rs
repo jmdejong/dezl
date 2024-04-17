@@ -132,6 +132,12 @@ impl World {
 						creature.hear(SoundType::Explain, text);
 					}
 				}
+				Plan::InspectItem(index) => {
+					let mut creature = self.creatures.get_creature_mut(&id).unwrap();
+					if let Some(item) = creature.inventory.get_item(index) {
+						creature.hear(SoundType::Explain, item.description().to_string());
+					}
+				}
 				Plan::Take(direction) => {
 					self.take(&id, direction);
 				}

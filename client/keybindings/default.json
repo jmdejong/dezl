@@ -23,6 +23,7 @@
 "J": ["act", "south"],
 "L": ["act", "east"],
 "H": ["act", "west"],
+"i": ["inspectitem"],
 "-": ["selectrel", -1],
 "+": ["selectrel", 1],
 "=": ["selectrel", 1],
