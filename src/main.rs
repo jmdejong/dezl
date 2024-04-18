@@ -34,10 +34,12 @@ mod worldmessages;
 mod main {
 
 	use std::thread;
+	use std::fs;
 	use std::time::{Instant, Duration};
 	use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 	use clap::Parser;
 	use time::OffsetDateTime;
+	use native_tls::Identity;
 
 	use crate::{
 		pos::Pos,
@@ -108,10 +110,15 @@ mod main {
 				.collect()
 			);
 		eprintln!("adresses: {:?}", adresses);
+		let identity = if config.tls_key.is_some() || config.tls_cert.is_some() {
+				let key = fs::read(config.tls_key.expect("TLS key must be set when TLS cert is set")).expect("failed to read TLS key");
+				let cert = fs::read(config.tls_cert.expect("TLS cert must be set when TLS key is set")).expect("failed to read TLS cert");
+				Some(Identity::from_pkcs8(&cert, &key).expect("failed to create TLS identity"))
+			} else { None };
 		let servers: Vec<ServerEnum> =
 			adresses
 			.iter()
-			.map(|a| a.to_server().unwrap())
+			.map(|a| a.to_server(identity.clone()).unwrap())
 			.collect();
 
 		let mut gameserver = GameServer::new(servers);

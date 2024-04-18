@@ -1,4 +1,5 @@
 mod tcpserver;
+mod tlsserver;
 mod unixserver;
 mod address;
 mod connection;
@@ -9,6 +10,8 @@ use crate::util::HolderId;
 use unixserver::UnixServer;
 pub use address::Address;
 pub use connection::ConnectionError;
+use native_tls::TlsStream;
+use mio::net::TcpStream;
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -55,11 +58,15 @@ pub trait Server {
 	}
 }
 
-type VarInetServer = tcpserver::TcpServer<connection::DynCon<mio::net::TcpStream>>;
+type VarInetServer = tcpserver::TcpServer<connection::DynCon<TcpStream>>;
+type WebTlsServer = tlsserver::TlsServer<connection::WebSocketConnection<TlsStream<TcpStream>>>;
+type StreamTlsServer = tlsserver::TlsServer<connection::StreamConnection<TlsStream<TcpStream>>>;
 
 #[enum_dispatch(Server)]
 pub enum ServerEnum {
 	VarInetServer,
+	WebTlsServer,
+	StreamTlsServer,
 	UnixServer,
 }
 

@@ -63,6 +63,11 @@ pub struct WorldConfig {
 	#[arg(long, env="USER")]
 	pub admins: String,
 
+	#[arg(long)]
+	pub tls_key: Option<PathBuf>,
+	#[arg(long)]
+	pub tls_cert: Option<PathBuf>,
+
 	/// The time (in milliseconds) between two steps
 	#[arg(long, default_value_t=100)]
 	pub step_duration: u64,

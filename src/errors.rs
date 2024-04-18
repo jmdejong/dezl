@@ -3,7 +3,6 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 pub type AnyError = Box<dyn Error + 'static>;
-pub type Result<T> = std::result::Result<T, AnyError>;
 
 #[derive(Debug)]
 pub struct AError {
