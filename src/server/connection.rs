@@ -1,13 +1,19 @@
 
 use std::io;
 use std::io::{Read, Write};
-use tungstenite::{WebSocket, Message};
+use tungstenite::{
+	WebSocket,
+	Message,
+	handshake::MidHandshake,
+	handshake::server::{ServerHandshake, NoCallback},
+};
 
 
 #[derive(Debug)]
 pub enum ConnectionError {
 	IO(io::Error),
 	Tungstenite(tungstenite::Error),
+	NotReadyYet,
 	Custom(String),
 	UnknownProtocol
 }
@@ -87,8 +93,11 @@ impl <T: Read+Write>Connection<T> for StreamConnection<T> {
 	}
 }
 
-pub struct WebSocketConnection<T: Read+Write> {
-	websocket: WebSocket<T>
+#[allow(clippy::large_enum_variant)]
+pub enum WebSocketConnection<T: Read+Write> {
+	Ready(WebSocket<T>),
+	Handshake(MidHandshake<ServerHandshake<T, NoCallback>>),
+	Invalid,
 }
 
 fn is_wouldblock_error(error: &tungstenite::Error) -> bool {
@@ -99,43 +108,59 @@ fn is_wouldblock_error(error: &tungstenite::Error) -> bool {
 	}
 }
 
-impl <T: Read+Write>Connection<T> for WebSocketConnection<T> {
+impl <T: Read+Write> Connection<T> for WebSocketConnection<T> {
 	
 	fn new(stream: T) -> Result<Self, ConnectionError> {
-		let websocket = match tungstenite::accept(stream) {
-			Ok(socket) => socket,
-			Err(tungstenite::HandshakeError::Interrupted(_)) => {
-				return Err(ConnectionError::Custom("Handshake would block".to_string()));
+		match tungstenite::accept(stream) {
+			Ok(socket) => Ok( Self::Ready(socket)),
+			Err(tungstenite::HandshakeError::Interrupted(handshake)) => {
+				Ok( Self::Handshake(handshake))
 			}
 			Err(tungstenite::HandshakeError::Failure(err)) => {
-				return Err(ConnectionError::Tungstenite(err));
+				Err(ConnectionError::Tungstenite(err))
 			}
-		};
-		Ok(Self { websocket })
+		}
 	}
 	
 	fn read(&mut self) -> Result<(Vec<String>, bool), ConnectionError> {
 		let mut messages = Vec::new();
 		let mut is_closed = false;
-		loop {
-			match self.websocket.read() {
-				Err(err) => {
-					if is_wouldblock_error(&err) {
-						break;
+		if matches!(self, Self::Handshake(_)) {
+			let Self::Handshake(handshake) = std::mem::replace(self, Self::Invalid)
+				else { panic!("Websocket is not in handshake state") };
+			match handshake.handshake() {
+				Ok(socket) => {
+					let _ = std::mem::replace(self, Self::Ready(socket));
+				}
+				Err(tungstenite::HandshakeError::Interrupted(handshake2)) => {
+					let _ = std::mem::replace(self, Self::Handshake(handshake2));
+				}
+				Err(tungstenite::HandshakeError::Failure(err)) => {
+					return Err(ConnectionError::Tungstenite(err));
+				}
+			}
+		}
+		if let Self::Ready(websocket) = self {
+			loop {
+				match websocket.read() {
+					Err(err) => {
+						if is_wouldblock_error(&err) {
+							break;
+						}
+						eprintln!("error reading websocket message: {:?}", err);
+						return Err(ConnectionError::Tungstenite(err))
 					}
-					eprintln!("error reading websocket message: {:?}", err);
-					return Err(ConnectionError::Tungstenite(err))
-				}
-				Ok(Message::Text(text)) => {
-					// println!("websocket text: {}", text.clone());
-					messages.push(text);
-				}
-				Ok(Message::Close(_)) => {
-					// println!("websocket close");
-					is_closed = true;
-				}
-				Ok(_) => {
-					// println!("websocket other");
+					Ok(Message::Text(text)) => {
+						// println!("websocket text: {}", text.clone());
+						messages.push(text);
+					}
+					Ok(Message::Close(_)) => {
+						// println!("websocket close");
+						is_closed = true;
+					}
+					Ok(_) => {
+						// println!("websocket other");
+					}
 				}
 			}
 		}
@@ -143,8 +168,15 @@ impl <T: Read+Write>Connection<T> for WebSocketConnection<T> {
 	}
 	
 	fn send(&mut self, text: &str) -> Result<(), ConnectionError> {
-		self.websocket.send(Message::Text(text.to_string()))
-			.map_err(ConnectionError::Tungstenite)
+		match self {
+			Self::Ready(websocket) => {
+				websocket.send(Message::Text(text.to_string()))
+					.map_err(ConnectionError::Tungstenite)
+			}
+			Self::Handshake(_)  | Self::Invalid => {
+				Err(ConnectionError::NotReadyYet)
+			}
+		}
 	}
 }
 
@@ -169,29 +201,26 @@ pub enum DynCon<T: Read+Write+Peek> {
 impl <T: Read+Write+Peek> DynCon<T> {
 
 	fn handshake(&mut self) -> Result<(), ConnectionError> {
-		let is_unknown = matches!(self, Self::Unknown(_stream));
-		if is_unknown {
-			if let Self::Unknown(stream) = std::mem::replace(self, Self::Invalid) {
-				let mut buf: [u8; 4] = [0; 4];
-				let connection = match stream.peek(&mut buf) {
-					Ok(0) => Self::Unknown(stream),
-					Ok(_) => {
-						if buf[0] == 0 {
-							Self::TCon(StreamConnection::new(stream)?)
-						} else if buf[0] == b'G' || buf[0] == b'P' {
-							Self::Web(WebSocketConnection::new(stream)?)
-						} else {
-							return Err(ConnectionError::Custom(format!("invalid first bytes from connection: {:?}", buf)));
-						}
+		if matches!(self, Self::Unknown(_stream)) {
+			let Self::Unknown(stream) = std::mem::replace(self, Self::Invalid)
+				else { panic!("DynCon is not in Unknown state") };
+			let mut buf: [u8; 4] = [0; 4];
+			let connection = match stream.peek(&mut buf) {
+				Ok(0) => Self::Unknown(stream),
+				Ok(_) => {
+					if buf[0] == 0 {
+						Self::TCon(StreamConnection::new(stream)?)
+					} else if buf[0] == b'G' || buf[0] == b'P' {
+						Self::Web(WebSocketConnection::new(stream)?)
+					} else {
+						return Err(ConnectionError::Custom(format!("invalid first bytes from connection: {:?}", buf)));
 					}
-					Err(_) => {
-						Self::Unknown(stream)
-					}
-				};
-				let _ = std::mem::replace(self, connection);
-			} else {
-				panic!("Dynamic connection is supposed to be Unknown but it's not")
-			}
+				}
+				Err(_) => {
+					Self::Unknown(stream)
+				}
+			};
+			let _ = std::mem::replace(self, connection);
 		}
 		Ok(())
 	}
