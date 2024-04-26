@@ -34,7 +34,7 @@ function generateRandomName() {
 	let vowels = "aaaaeeeeeeiiioooouu";
 	let consonants = "bbccdddffgghhjjkkllmmmnnnnppqrrrrsssstttttvvwxyz";
 
-	name = ""
+	let name = ""
 	let nSyllables = 2 + Math.random() * 2;
 	for (let i=0; i<nSyllables; ++i) {
 		if (Math.random() > 0.5) {

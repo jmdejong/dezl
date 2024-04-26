@@ -57,7 +57,12 @@ class Vec2 {
 	}
 
 	normalize() {
-		return this.div(this.length());
+		let l = this.length();
+		if (l !== 0) {
+			return this.div(l);
+		} else {
+			return this;
+		}
 	}
 
 	lerp(to, d) {
