@@ -109,12 +109,13 @@ impl InfiniteMap {
 	}
 
 	fn edge_distance(&self, pos: Pos) -> i32 {
+		let (bpos, dpos) = self.biome_pos(pos);
 		let mut distances: Vec<(i32, BPos)> = self.neighbour_biomes(pos)
 			.collect();
 		distances.sort_by_key(|(d, _)| *d);
-		let (dist, bpos) = distances[0];
+		let dist = dpos.size();
 		let my_biome = self.biome_at(bpos);
-		distances[1..].iter()
+		distances[0..].iter()
 			.find(|(_, b)| self.biome_at(*b) != my_biome)
 			.map_or(BIOME_SIZE / 2, |(d, _)| d - dist)
 	}
@@ -130,11 +131,6 @@ impl InfiniteMap {
 		let b_pos = self.closest_biome_pos(fuzzy_pos);
 		let dpos = pos - self.biome_core(b_pos);
 		(b_pos, dpos)
-	}
-
-	fn rock_height(&self, pos: Pos) -> f32 {
-		let c = ((self.edge_distance(pos) - EDGE_SIZE) as f32 / 4.0).clamp(0.0, 1.0);
-		math::ease_in_out_cubic(self.heightmaps.rock.height(pos)) * c
 	}
 
 	fn tile(&self, pos: Pos, time: Timestamp) -> Tile {
@@ -251,6 +247,10 @@ impl InfiniteMap {
 				(t!(Grass1, Shrub), 2)
 			])
 		}
+	}
+	fn rock_height(&self, pos: Pos) -> f32 {
+		let c = ((self.edge_distance(pos) - EDGE_SIZE) as f32 / 4.0).clamp(0.0, 1.0);
+		math::ease_in_out_cubic(self.heightmaps.rock.height(pos)) * c
 	}
 	fn gen_rocks(&self, pos: Pos, rind: u32, rtime: u32) -> Tile {
 		let min_height = 0.6;
@@ -396,5 +396,19 @@ mod tests {
 		}
 		eprintln!("total: {}, failed: {}", total, failed.len());
 		assert_eq!(failed, Vec::new());
+	}
+
+	#[test]
+	fn rock_height(){
+		let map = InfiniteMap::new(12845336);
+		let time = Timestamp(100);
+		for pos in [Pos::new(32, 65), Pos::new(32, 66)] {
+			eprintln!("  pos {:?}", pos);
+			eprintln!("tile {:?}", map.tile(pos, time));
+			eprintln!("edge {:?}", map.edge_distance(pos));
+			eprintln!("bpos {:?}", map.biome_pos(pos));
+			eprintln!("neighbours {:?}", map.neighbour_biomes(pos).collect::<Vec<(i32, BPos)>>());
+		}
+		assert!(true);
 	}
 }
