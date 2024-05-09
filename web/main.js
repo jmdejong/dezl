@@ -7,8 +7,8 @@ function main(){
 	let loginForm = document.getElementById("login");
 	loginForm.hidden = false;
 	let hostInput = loginForm.hostinput;
-	if (hostInput.value === hostInput.defaultValue) {
-		hostInput.value = `ws://${window.location.hostname || "localhost"}:9231`;
+	if (hostInput.value === hostInput.defaultValue || !hostInput.value) {
+		hostInput.value = default_host;
 	}
 	let nameInput = loginForm.username;
 	if (!nameInput.value || nameInput.value === nameInput.defaultValue) {
@@ -18,7 +18,7 @@ function main(){
 
 	let params = new URLSearchParams(window.location.search);
 	if (params.get("login")) {
-		start(params.get("login"), loginForm.host.value);
+		start(params.get("login"), default_host);
 	} else {
 		loginForm.addEventListener("submit", e => {
 			let username = e.target.username.value;
