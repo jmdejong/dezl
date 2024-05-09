@@ -2,7 +2,13 @@
 
 use std::net::SocketAddr;
 use mio::net::{TcpListener, TcpStream};
-use native_tls::{Identity, TlsAcceptor, TlsStream};
+use native_tls::{
+	Identity,
+	TlsAcceptor,
+	TlsStream,
+	MidHandshakeTlsStream,
+	HandshakeError,
+};
 use crate::{
 	util::Holder,
 	errors::{AnyError},
@@ -22,6 +28,7 @@ pub struct TlsServer<T: Connection<TlsStream<TcpStream>>> {
 	listener: TcpListener,
 	acceptor: TlsAcceptor,
 	connections: Holder<ConnectionId, T>,
+	partial_connections: Vec<MidHandshakeTlsStream<TcpStream>>,
 }
 
 impl <T: Connection<TlsStream<TcpStream>>> TlsServer<T> {
@@ -33,6 +40,7 @@ impl <T: Connection<TlsStream<TcpStream>>> TlsServer<T> {
 			listener,
 			acceptor,
 			connections: Holder::new(),
+			partial_connections: Vec::new(),
 		})
 	}
 }
@@ -40,12 +48,26 @@ impl <T: Connection<TlsStream<TcpStream>>> TlsServer<T> {
 impl <T: Connection<TlsStream<TcpStream>>> Server for TlsServer<T> {
 
 	fn accept_pending_connections(&mut self) -> Vec<ConnectionId> {
+
 		let mut new_connections = Vec::new();
+		let partial_connections = std::mem::replace(&mut self.partial_connections, Vec::new());
+		let mut results: Vec<Result<TlsStream<TcpStream>, HandshakeError<TcpStream>>> = partial_connections.into_iter()
+			.map(MidHandshakeTlsStream::handshake)
+			.collect();
 		while let Ok((stream, _address)) = self.listener.accept() {
-			let tls_stream = self.acceptor.accept(stream).unwrap();
-			let con = Connection::new(tls_stream).unwrap();
-			let id = self.connections.insert(con);
-			new_connections.push(id);
+			results.push(self.acceptor.accept(stream));
+		}
+
+		for result in results {
+			match result {
+				Ok(tls_stream) => {
+					let con = Connection::new(tls_stream).unwrap();
+					let id = self.connections.insert(con);
+					new_connections.push(id);
+				}
+				Err(HandshakeError::Failure(err)) => panic!("Failed tls handshake: {}", err),
+				Err(HandshakeError::WouldBlock(mid_stream)) => self.partial_connections.push(mid_stream),
+			}
 		}
 		new_connections
 	}
